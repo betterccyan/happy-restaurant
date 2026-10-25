@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { db, getDish, createDish, updateDish, deleteDish } from '../data/db'
@@ -8,6 +8,7 @@ import { haptic, toast } from '../store/app'
 import { normalizeOptions } from '../lib/options'
 import { pickAndCompress, putImage, resolveImage, removeImage } from '../lib/image-store'
 import { mealCategoryByHour } from '../lib/util'
+import { inferDish } from '../data/dish-kb'
 
 const props = defineProps({ params: { type: Object, default: () => ({}) } })
 
@@ -36,6 +37,47 @@ const showEmojiPanel = ref(false)
 const cats = computed(() => [...db.categories].sort((a, b) => a.sort - b.sort))
 const ingredientCount = computed(() => ingredients.value.split('\n').filter((l) => l.trim()).length)
 
+/* --------- 菜名 → 热量 / 食材 推断 --------- */
+const hint = ref(null)
+// 记住「已经处理过的菜名」：填过、忽略过、或者本来就是正在编辑的这道菜，
+// 再出现同一个名字就不弹卡片，免得改别的地方时它反复冒出来。
+const hintHandled = ref('')
+const hintLines = computed(() => (hint.value ? hint.value.ingredients.split('\n').filter(Boolean) : []))
+let hintTimer = null
+
+watch(name, (v) => {
+  clearTimeout(hintTimer)
+  const raw = String(v || '').trim()
+  if (raw.length < 2) {
+    hint.value = null
+    return
+  }
+  // 边打字边算会一直闪，停下来再识别
+  hintTimer = setTimeout(() => {
+    hint.value = raw === hintHandled.value ? null : inferDish(raw)
+  }, 320)
+})
+
+function dismissHint() {
+  hintHandled.value = String(name.value || '').trim()
+  hint.value = null
+}
+
+function fillHint() {
+  const h = hint.value
+  if (!h) return
+  const hasData = Number(calories.value) > 0 || String(ingredients.value || '').trim()
+  if (hasData && !window.confirm('会用识别结果覆盖现在的热量和食材，继续？')) return
+  calories.value = h.calories
+  ingredients.value = h.ingredients
+  if (h.emoji) emoji.value = h.emoji
+  if (h.category && cats.value.some((c) => c.name === h.category)) category.value = h.category
+  hintHandled.value = String(name.value || '').trim()
+  hint.value = null
+  haptic()
+  toast('已填入热量和 ' + h.ingredients.split('\n').filter(Boolean).length + ' 种食材')
+}
+
 onMounted(async () => {
   if (!isEdit) {
     // 新建时按当前餐次预选分类
@@ -46,6 +88,7 @@ onMounted(async () => {
     return
   }
   const d = getDish(editingId)
+  hintHandled.value = String(d?.name || '').trim()
   if (!d) {
     toast('菜品不存在')
     back()
@@ -225,6 +268,32 @@ function confirmDelete() {
         <div class="field">
           <span class="field-label">菜名</span>
           <input v-model="name" placeholder="比如 番茄炒蛋" maxlength="20" />
+        </div>
+
+        <!-- 根据菜名推断热量与食材 -->
+        <div v-if="hint" class="guess anim-fade">
+          <div class="guess-top">
+            <span class="guess-emoji">{{ hint.emoji }}</span>
+            <div class="guess-text">
+              <div class="guess-line">
+                <span class="guess-kcal">{{ hint.calories }} 千卡</span>
+                <span v-if="hint.kind === 'compose'" class="guess-tag">估算</span>
+                <span v-else class="guess-tag ok">菜谱库</span>
+                <span v-if="hint.category" class="guess-tag cat">{{ hint.category }}</span>
+              </div>
+              <div class="guess-note">{{ hint.note }}</div>
+            </div>
+            <button class="guess-x" @click="dismissHint">
+              <AppIcon name="close" :size="13" :stroke="2.2" />
+            </button>
+          </div>
+          <div class="guess-ings">
+            <span v-for="(ing, i) in hintLines" :key="i" class="g-ing">{{ ing }}</span>
+          </div>
+          <button class="guess-fill" @click="fillHint">
+            填入热量和食材
+            <AppIcon name="chevronRight" :size="14" :stroke="2.2" />
+          </button>
         </div>
 
         <div class="field gap">
@@ -458,6 +527,114 @@ function confirmDelete() {
 
 .field.gap {
   margin-top: 9px;
+}
+
+/* ---- 菜名识别卡片 ---- */
+.guess {
+  margin-top: 10px;
+  padding: 12px 13px 11px;
+  border-radius: var(--r-md);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.96), rgba(240, 246, 255, 0.94));
+  box-shadow: inset 0 0 0 1px rgba(44, 123, 242, 0.14), 0 8px 20px -14px rgba(16, 24, 40, 0.28);
+}
+.guess-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.guess-emoji {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 19px;
+  line-height: 1;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+}
+.guess-text {
+  flex: 1;
+  min-width: 0;
+}
+.guess-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.guess-kcal {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink-1);
+  font-variant-numeric: tabular-nums;
+}
+.guess-tag {
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: rgba(18, 22, 27, 0.06);
+}
+.guess-tag.ok {
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+}
+.guess-tag.cat {
+  color: var(--ink-2);
+  background: rgba(44, 123, 242, 0.09);
+}
+.guess-note {
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+.guess-x {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--ink-3);
+  background: rgba(18, 22, 27, 0.05);
+}
+.guess-ings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.g-ing {
+  padding: 3px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-2);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(18, 22, 27, 0.06);
+}
+.guess-fill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 36px;
+  margin-top: 10px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--accent);
+  background: var(--accent-soft);
+  transition: transform 0.18s var(--ease-spring);
+}
+.guess-fill:active {
+  transform: scale(0.975);
 }
 .unit {
   flex: 0 0 auto;

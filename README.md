@@ -10,7 +10,7 @@
   <img alt="platform" src="https://img.shields.io/badge/Android-6.0%2B-3DDC84?logo=android&logoColor=white&style=flat-square">
   <img alt="vue" src="https://img.shields.io/badge/Vue-3.5-42b883?logo=vue.js&logoColor=white&style=flat-square">
   <img alt="capacitor" src="https://img.shields.io/badge/Capacitor-7-119EFF?style=flat-square">
-  <img alt="version" src="https://img.shields.io/badge/version-1.0.5-2C7BF2?style=flat-square">
+  <img alt="version" src="https://img.shields.io/badge/version-1.0.6-2C7BF2?style=flat-square">
   <img alt="size" src="https://img.shields.io/badge/APK-4.4MB-8A929E?style=flat-square">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-2C7BF2?style=flat-square">
 </p>
@@ -56,6 +56,7 @@
 | 工作台：待做 / 今日点单 / 菜品数 | | ✓ |
 | 接单流转：开始做 → 已上桌 / 不做了 | | ✓ |
 | 菜品增删改（图片、分类、热量、食材、规格组） | | ✓ |
+| 输入菜名自动推断热量与食材（133 道家常菜，认不出的按食材组合估算） | | ✓ |
 | 菜品上下架（下架后家人菜单里消失） | | ✓ |
 | 买菜清单按今日未取消订单聚合，一键复制 | | ✓ |
 | 分类管理、店名与公告、数据备份 / 恢复 | | ✓ |
@@ -132,7 +133,7 @@ app-android/
 ├── src/
 │   ├── views/            11 个页面（RoleSelect / OwnerHome / MenuPage / Checkout …）
 │   ├── components/       TabBar、PageHeader、Stepper、OptionSheet、TableSheet、DishAvatar …
-│   ├── data/             db.js（唯一数据出口）+ snapshots.js（自动备份）+ seed.js（14 道初始菜品）
+│   ├── data/             db.js（唯一数据出口）+ snapshots.js（自动备份）+ dish-kb.js（菜名推断）+ seed.js
 │   ├── store/            router.js（hash 路由）、app.js（toast / haptic）
 │   ├── lib/              options.js、ingredients.js、image-store.js、util.js
 │   └── styles/           tokens.css（设计变量）、base.css（通用组件样式）
@@ -150,6 +151,8 @@ app-android/
 | 菜品图片（压缩后的 blob） | IndexedDB | `xfk_images` / `blobs` |
 | 自动备份快照（最近 7 份） | IndexedDB | `xfk_backup` / `snapshots` |
 | 损坏数据的原样留档 | localStorage | `xfk_db_broken` |
+
+菜名到热量、食材的推断由 `src/data/dish-kb.js` 在本地完成，不联网、不上传菜名。
 
 业务数据走 `src/data/db.js` 这一个出口，用 Vue `reactive` 保证响应式，改动自动落盘。**要接云端同步，只改这一个文件**。
 
