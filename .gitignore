@@ -1,7 +1,7 @@
 node_modules/
 dist/
 shots/
-icon-preview.png
+icon-preview/
 
 # 安卓构建产物
 android/.gradle/
