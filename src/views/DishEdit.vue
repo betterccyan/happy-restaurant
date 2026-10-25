@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import AppIcon from '../components/AppIcon.vue'
-import { db, getDish, createDish, updateDish, deleteDish } from '../data/db'
+import { db, getDish, createDish, updateDish, deleteDish, subsOf } from '../data/db'
 import { back } from '../store/router'
 import { haptic, toast } from '../store/app'
 import { normalizeOptions } from '../lib/options'
@@ -24,6 +24,7 @@ const EMOJIS = [
 
 const name = ref('')
 const category = ref('')
+const sub = ref('')
 const emoji = ref('🍽️')
 const description = ref('')
 const calories = ref(0)
@@ -36,7 +37,14 @@ const saving = ref(false)
 const showEmojiPanel = ref(false)
 
 const cats = computed(() => [...db.categories].sort((a, b) => a.sort - b.sort))
+// 二级跟着一级走：加餐没有二级，这一行就不出现
+const subs = computed(() => subsOf(category.value))
 const ingredientCount = computed(() => ingredients.value.split('\n').filter((l) => l.trim()).length)
+
+function pickCat(name) {
+  category.value = name
+  if (!subsOf(name).some((x) => x.name === sub.value)) sub.value = ''
+}
 
 /* --------- 菜名 → 热量 / 食材 推断 --------- */
 const hint = ref(null)
@@ -44,6 +52,13 @@ const hint = ref(null)
 // 再出现同一个名字就不弹卡片，免得改别的地方时它反复冒出来。
 const hintHandled = ref('')
 const hintLines = computed(() => (hint.value ? hint.value.ingredients.split('\n').filter(Boolean) : []))
+// 卡片上显示「早餐 · 饮品」这种，二级要校验过才算数
+const hintCat = computed(() => {
+  const h = hint.value
+  if (!h || !h.category) return ''
+  const s = h.sub && subsOf(h.category).some((x) => x.name === h.sub) ? h.sub : ''
+  return s ? h.category + ' · ' + s : h.category
+})
 let hintTimer = null
 
 watch(name, (v) => {
@@ -80,7 +95,10 @@ async function fillHint() {
   calories.value = h.calories
   ingredients.value = h.ingredients
   if (h.emoji) emoji.value = h.emoji
-  if (h.category && cats.value.some((c) => c.name === h.category)) category.value = h.category
+  if (h.category && cats.value.some((c) => c.name === h.category)) {
+    category.value = h.category
+    if (h.sub && subsOf(h.category).some((x) => x.name === h.sub)) sub.value = h.sub
+  }
   hintHandled.value = String(name.value || '').trim()
   hint.value = null
   haptic()
@@ -179,6 +197,7 @@ onMounted(async () => {
   }
   name.value = d.name
   category.value = d.category
+  sub.value = d.sub || ''
   emoji.value = d.emoji
   description.value = d.description
   calories.value = d.calories
@@ -262,6 +281,7 @@ function save() {
   const payload = {
     name: n,
     category: category.value,
+    sub: sub.value,
     emoji: emoji.value,
     description: description.value.trim(),
     calories: Math.max(0, Number(calories.value) || 0),
@@ -401,7 +421,7 @@ async function confirmDelete() {
                 <span class="guess-kcal">{{ hint.calories }} 千卡</span>
                 <span v-if="hint.kind === 'compose'" class="guess-tag">估算</span>
                 <span v-else class="guess-tag ok">菜谱库</span>
-                <span v-if="hint.category" class="guess-tag cat">{{ hint.category }}</span>
+                <span v-if="hintCat" class="guess-tag cat">{{ hintCat }}</span>
               </div>
               <div class="guess-note">{{ hint.note }}</div>
             </div>
@@ -437,10 +457,26 @@ async function confirmDelete() {
             :key="c.id"
             class="chip"
             :class="{ on: category === c.name }"
-            @click="category = c.name"
+            @click="pickCat(c.name)"
           >
             {{ c.name }}
           </button>
+        </div>
+
+        <!-- 二级分类：加餐没有，这里自然不出现 -->
+        <div v-if="subs.length" class="sub-pick anim-fade">
+          <div class="chips">
+            <button class="chip sm" :class="{ on: !sub }" @click="sub = ''">不分</button>
+            <button
+              v-for="s in subs"
+              :key="s.id"
+              class="chip sm"
+              :class="{ on: sub === s.name }"
+              @click="sub = s.name"
+            >
+              {{ s.name }}
+            </button>
+          </div>
         </div>
 
         <!-- 食材 -->
@@ -649,6 +685,26 @@ async function confirmDelete() {
 
 .field.gap {
   margin-top: 9px;
+}
+
+/* ---- 二级分类 ---- */
+.sub-pick {
+  margin-top: 8px;
+}
+/* 二级要比一级轻：一级选中是实心蓝，二级只到浅蓝底深蓝字 */
+.chip.sm {
+  height: 29px;
+  padding: 0 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(18, 22, 27, 0.05);
+}
+.chip.sm.on {
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(44, 123, 242, 0.26);
 }
 
 /* ---- 菜名联想 ---- */

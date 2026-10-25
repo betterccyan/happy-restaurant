@@ -1,22 +1,43 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import AppIcon from '../components/AppIcon.vue'
 import DishAvatar from '../components/DishAvatar.vue'
 import EmptyState from '../components/EmptyState.vue'
+import SubChips from '../components/SubChips.vue'
 import { db, toggleDishAvailable } from '../data/db'
 import { navigate } from '../store/router'
 import { haptic, toast } from '../store/app'
 
 const keyword = ref('')
 const cat = ref('')
+const sub = ref('')
 const onlyHidden = ref(false)
 
 const cats = computed(() => [...db.categories].sort((a, b) => a.sort - b.sort))
 
+// 「全部」下不显示二级条，只有选定某一餐才有意义
+const subs = computed(() => {
+  if (!cat.value) return []
+  const c = cats.value.find((x) => x.name === cat.value)
+  if (!c || !Array.isArray(c.subs)) return []
+  return [...c.subs].sort((a, b) => a.sort - b.sort)
+})
+
+const noneCount = computed(() => {
+  if (!subs.value.length) return 0
+  return db.dishes.filter((d) => d.category === cat.value && !d.sub).length
+})
+
+watch(cat, () => {
+  sub.value = ''
+})
+
 const list = computed(() => {
   let arr = [...db.dishes].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
   if (cat.value) arr = arr.filter((d) => d.category === cat.value)
+  if (sub.value === '__none') arr = arr.filter((d) => !d.sub)
+  else if (sub.value) arr = arr.filter((d) => d.sub === sub.value)
   if (onlyHidden.value) arr = arr.filter((d) => !d.available)
   const kw = keyword.value.trim()
   if (kw) arr = arr.filter((d) => d.name.includes(kw))
@@ -66,7 +87,7 @@ function edit(dish) {
     </div>
 
     <div class="cats">
-      <div class="chips">
+      <div class="chips" :class="{ 'has-sub': subs.length }">
         <button class="chip" :class="{ on: cat === '' }" @click="cat = ''">全部</button>
         <button
           v-for="c in cats"
@@ -77,6 +98,9 @@ function edit(dish) {
         >
           {{ c.name }}
         </button>
+      </div>
+      <div v-if="subs.length" class="sub-row">
+        <SubChips v-model="sub" :subs="subs" :none-count="noneCount" />
       </div>
     </div>
 
@@ -99,7 +123,7 @@ function edit(dish) {
             <div class="row-main">
               <div class="row-title" :class="{ off: !d.available }">{{ d.name }}</div>
               <div class="row-desc">
-                {{ d.category }}
+                {{ d.category }}<template v-if="d.sub"> · {{ d.sub }}</template>
                 <template v-if="d.calories > 0"> · {{ d.calories }} 千卡</template>
                 <template v-if="d.ingredients"> · {{ d.ingredients.split('\n').filter(Boolean).length }} 种食材</template>
               </div>
@@ -198,6 +222,12 @@ function edit(dish) {
 
 .cats {
   padding: 10px 18px 11px;
+}
+.cats .chips.has-sub {
+  padding-bottom: 7px;
+}
+.sub-row {
+  padding-top: 0;
 }
 
 .row-title.off {

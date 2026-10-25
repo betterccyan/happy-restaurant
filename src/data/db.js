@@ -1,6 +1,7 @@
 import { reactive, watch } from 'vue'
 import { SEED_CATEGORIES, SEED_DISHES } from './seed'
 import { normalizeOptions } from '../lib/options'
+import { SUB_PRESETS, guessSub } from '../lib/subcat'
 import { putSnapshot, autoSnapshotToday } from './snapshots'
 
 const KEY = 'xfk_db_v1'
@@ -16,6 +17,9 @@ export const storageState = reactive({ errors: 0, message: '', at: 0 })
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v)
 
+// 这次载入有没有给老数据补过二级分类：补过就立刻落盘，免得下次启动又猜一遍
+let subsBootstrapped = false
+
 function nextId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
@@ -26,7 +30,14 @@ function seed() {
     // 本机档案：只记「这台设备当前是谁在用」
     profile: { role: '', nickname: '' },
     settings: { name: '幸福小馆', notice: '今天想吃点什么？' },
-    categories: SEED_CATEGORIES.map((name, i) => ({ id: nextId(), name, sort: i })),
+    categories: SEED_CATEGORIES.map((c, i) => ({
+      id: nextId(),
+      name: c.name,
+      sort: i,
+      subs: (c.subs || []).map((n, j) => ({ id: nextId(), name: n, sort: j }))
+    })),
+    // 二级分类已经按预设建好了，别再让升级逻辑重跑一遍
+    subsSeeded: true,
     dishes: SEED_DISHES.map((d, i) => ({
       id: nextId(),
       ...d,
@@ -49,7 +60,20 @@ function normalize(input, from) {
     { name: '幸福小馆', notice: '今天想吃点什么？' },
     isObj(d.settings) ? d.settings : {}
   )
+  // 分类是一级 + 一层二级（subs）。老数据没有 subs 字段，下面按预设补一次。
   if (!Array.isArray(d.categories)) d.categories = []
+  d.categories = d.categories.filter(isObj).map((c, i) => ({
+    ...c,
+    id: c.id || nextId(),
+    name: String(c.name || '未命名').slice(0, 10),
+    sort: Number.isFinite(Number(c.sort)) ? Number(c.sort) : i,
+    subs: (Array.isArray(c.subs) ? c.subs : []).filter(isObj).map((s, j) => ({
+      ...s,
+      id: s.id || nextId(),
+      name: String(s.name || '未命名').slice(0, 10),
+      sort: Number.isFinite(Number(s.sort)) ? Number(s.sort) : j
+    }))
+  }))
   if (!Array.isArray(d.dishes)) d.dishes = []
   if (!Array.isArray(d.orders)) d.orders = []
   d.checked = isObj(d.checked) ? d.checked : {}
@@ -61,6 +85,7 @@ function normalize(input, from) {
     id: dish.id || nextId(),
     name: String(dish.name || '未命名').slice(0, 20),
     category: dish.category || d.categories[0]?.name || '中晚餐',
+    sub: String(dish.sub || '').slice(0, 10),
     emoji: dish.emoji || '🍽️',
     description: String(dish.description || '').slice(0, 40),
     calories: Math.max(0, Math.round(Number(dish.calories) || 0)),
@@ -70,6 +95,38 @@ function normalize(input, from) {
     imageKey: dish.imageKey || '',
     createdAt: dish.createdAt || new Date(Date.now() - (len - i) * 60000).toISOString()
   }))
+
+  // 首次装上「带二级分类」的版本：按预设给一二级分类建好，再给存量菜品猜一次归类。
+  // 只跑一次——用户之后自己删改的二级分类不会被再次覆盖。
+  if (!d.subsSeeded) {
+    d.categories.forEach((c) => {
+      const preset = SUB_PRESETS[c.name]
+      if (preset && preset.length && c.subs.length === 0) {
+        c.subs = preset.map((n, j) => ({ id: nextId(), name: n, sort: j }))
+      }
+    })
+    d.dishes.forEach((dish) => {
+      if (dish.sub) return
+      const c = d.categories.find((x) => x.name === dish.category)
+      if (!c) return
+      dish.sub = guessSub(
+        dish.name,
+        c.name,
+        c.subs.map((s) => s.name)
+      )
+    })
+    d.subsSeeded = true
+    subsBootstrapped = true
+  }
+
+  // 二级必须真的属于它所在的一级分类，否则清空（二级被删掉后可能留下这种残留）
+  const subNames = new Map(d.categories.map((c) => [c.name, new Set(c.subs.map((s) => s.name))]))
+  d.dishes.forEach((dish) => {
+    if (!dish.sub) return
+    const set = subNames.get(dish.category)
+    if (!set || !set.has(dish.sub)) dish.sub = ''
+  })
+
   // 数据来自更新版本的 App 时，不要把版本号改小
   d.v = Math.max(Number(from) || 0, DB_VERSION)
   return d
@@ -169,6 +226,9 @@ function persist() {
 
 watch(db, persist, { deep: true })
 
+// 二级分类是升级时补出来的，不属于用户操作，所以 watch 不会触发——手动存一次
+if (subsBootstrapped) setTimeout(persist, 0)
+
 /* ---------------- 身份 ---------------- */
 export function setRole(role) {
   db.profile.role = role
@@ -195,7 +255,7 @@ export function createCategory(name) {
   if (!n) throw new Error('分类名不能为空')
   if (db.categories.some((c) => c.name === n)) throw new Error('分类已存在')
   const maxSort = db.categories.reduce((m, c) => Math.max(m, c.sort), 0)
-  const item = { id: nextId(), name: n, sort: maxSort + 1 }
+  const item = { id: nextId(), name: n, sort: maxSort + 1, subs: [] }
   db.categories.push(item)
   return item
 }
@@ -223,7 +283,63 @@ export function deleteCategory(id) {
   db.categories = db.categories.filter((c) => c.id !== id)
 }
 
+/* ---------------- 二级分类 ---------------- */
+export function subsOf(categoryName) {
+  const c = db.categories.find((x) => x.name === categoryName)
+  if (!c || !Array.isArray(c.subs)) return []
+  return [...c.subs].sort((a, b) => a.sort - b.sort)
+}
+
+export function createSub(catId, name) {
+  const n = String(name || '').trim().slice(0, 10)
+  if (!n) throw new Error('二级分类名不能为空')
+  const c = db.categories.find((x) => x.id === catId)
+  if (!c) throw new Error('分类不存在')
+  if (c.subs.some((s) => s.name === n)) throw new Error('「' + n + '」已经有了')
+  const maxSort = c.subs.reduce((m, s) => Math.max(m, s.sort), -1)
+  const item = { id: nextId(), name: n, sort: maxSort + 1 }
+  c.subs.push(item)
+  return item
+}
+
+export function renameSub(catId, subId, name) {
+  const n = String(name || '').trim().slice(0, 10)
+  if (!n) throw new Error('二级分类名不能为空')
+  const c = db.categories.find((x) => x.id === catId)
+  if (!c) throw new Error('分类不存在')
+  if (c.subs.some((s) => s.name === n && s.id !== subId)) throw new Error('「' + n + '」已经有了')
+  const s = c.subs.find((x) => x.id === subId)
+  if (!s) throw new Error('二级分类不存在')
+  const old = s.name
+  s.name = n
+  db.dishes.forEach((d) => {
+    if (d.category === c.name && d.sub === old) d.sub = n
+  })
+  return s
+}
+
+export function deleteSub(catId, subId) {
+  const c = db.categories.find((x) => x.id === catId)
+  if (!c) return
+  const s = c.subs.find((x) => x.id === subId)
+  if (!s) return
+  // 菜不删，只是失去二级归属，界面里会落到「其他」
+  db.dishes.forEach((d) => {
+    if (d.category === c.name && d.sub === s.name) d.sub = ''
+  })
+  c.subs = c.subs.filter((x) => x.id !== subId)
+}
+
 /* ---------------- 菜品 ---------------- */
+// 二级必须属于这道菜所在的一级分类，对不上就当没选（而不是硬塞一个不存在的）
+function validSub(categoryName, name) {
+  const n = String(name || '').trim().slice(0, 10)
+  if (!n) return ''
+  const c = db.categories.find((x) => x.name === categoryName)
+  if (!c || !Array.isArray(c.subs)) return ''
+  return c.subs.some((s) => s.name === n) ? n : ''
+}
+
 export function listDishes() {
   return [...db.dishes].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
 }
@@ -233,10 +349,12 @@ export function getDish(id) {
 }
 
 export function createDish(payload) {
+  const cat = payload.category || db.categories[0]?.name || '中晚餐'
   const dish = {
     id: nextId(),
     name: String(payload.name || '').trim().slice(0, 20),
-    category: payload.category || db.categories[0]?.name || '中晚餐',
+    category: cat,
+    sub: validSub(cat, payload.sub),
     emoji: payload.emoji || '🍽️',
     description: String(payload.description || '').slice(0, 40),
     calories: Math.max(0, Math.round(Number(payload.calories) || 0)),
@@ -254,9 +372,12 @@ export function createDish(payload) {
 export function updateDish(id, payload) {
   const dish = getDish(id)
   if (!dish) throw new Error('菜品不存在')
+  const cat = payload.category || dish.category
   Object.assign(dish, {
     name: String(payload.name || dish.name).trim().slice(0, 20),
-    category: payload.category || dish.category,
+    category: cat,
+    // 换了一级分类时，原来的二级大概率不适用，按新分类重新校验
+    sub: validSub(cat, payload.sub !== undefined ? payload.sub : dish.sub),
     emoji: payload.emoji || dish.emoji,
     description: String(payload.description || '').slice(0, 40),
     calories: Math.max(0, Math.round(Number(payload.calories) || 0)),

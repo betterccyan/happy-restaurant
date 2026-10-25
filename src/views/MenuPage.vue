@@ -1,11 +1,12 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
 import DishAvatar from '../components/DishAvatar.vue'
 import Stepper from '../components/Stepper.vue'
 import EmptyState from '../components/EmptyState.vue'
 import OptionSheet from '../components/OptionSheet.vue'
 import TableSheet from '../components/TableSheet.vue'
+import SubChips from '../components/SubChips.vue'
 import { db, dishStats } from '../data/db'
 import { navigate } from '../store/router'
 import {
@@ -23,6 +24,8 @@ import { mealCategoryByHour, daysAgoText } from '../lib/util'
 import { resolveImage } from '../lib/image-store'
 
 const activeCat = ref('')
+// '' = 全部；'__none' = 没归到任何二级的菜
+const activeSub = ref('')
 const keyword = ref('')
 const searching = ref(false)
 const sheetDish = ref(null)
@@ -34,9 +37,33 @@ const sortMode = ref('default')
 const cats = computed(() => [...db.categories].sort((a, b) => a.sort - b.sort))
 const availableDishes = computed(() => db.dishes.filter((d) => d.available))
 
+// 当前这一餐的二级分类（加餐没有二级，这一条就整行不出现）
+const subs = computed(() => {
+  const c = cats.value.find((x) => x.name === activeCat.value)
+  if (!c || !Array.isArray(c.subs)) return []
+  return [...c.subs].sort((a, b) => a.sort - b.sort)
+})
+
+const noneCount = computed(() => {
+  if (!subs.value.length) return 0
+  return availableDishes.value.filter((d) => d.category === activeCat.value && !d.sub).length
+})
+
+// 换一餐就把二级重置，否则会停在上一次的「饮品」上，看起来像没菜
+watch(activeCat, () => {
+  activeSub.value = ''
+})
+
+function inSub(d) {
+  if (!activeSub.value) return true
+  if (activeSub.value === '__none') return !d.sub
+  return d.sub === activeSub.value
+}
+
 const list = computed(() => {
   let arr = availableDishes.value
   if (activeCat.value) arr = arr.filter((d) => d.category === activeCat.value)
+  arr = arr.filter(inSub)
   const kw = keyword.value.trim()
   if (kw) arr = arr.filter((d) => d.name.includes(kw) || d.description.includes(kw))
   return arr
@@ -87,13 +114,15 @@ function rowHint(d) {
 }
 
 /* ---- 今晚这桌 ---- */
-const pool = computed(() =>
-  activeCat.value ? availableDishes.value.filter((d) => d.category === activeCat.value) : availableDishes.value
-)
+const pool = computed(() => {
+  let arr = availableDishes.value
+  if (activeCat.value) arr = arr.filter((d) => d.category === activeCat.value)
+  return arr.filter(inSub)
+})
 
 function openTable() {
-  if (availableDishes.value.length === 0) {
-    toast('菜单还是空的')
+  if (pool.value.length === 0) {
+    toast(activeSub.value ? '这一栏还没有菜' : '菜单还是空的')
     return
   }
   haptic()
@@ -197,7 +226,7 @@ async function lucky() {
         </div>
       </div>
 
-      <div class="chips cats">
+      <div class="chips cats" :class="{ 'has-sub': subs.length }">
         <button
           v-for="c in cats"
           :key="c.id"
@@ -207,6 +236,11 @@ async function lucky() {
         >
           {{ c.name }}
         </button>
+      </div>
+
+      <!-- 二级：早餐「饮品 / 餐点」、午晚餐「主食 / 菜品」，加餐没有 -->
+      <div v-if="subs.length" class="sub-row">
+        <SubChips v-model="activeSub" :subs="subs" :none-count="noneCount" />
       </div>
     </header>
 
@@ -394,6 +428,13 @@ async function lucky() {
 }
 
 .cats {
+  padding: 0 18px 11px;
+}
+/* 下面还有二级分类时，两级靠紧一点，看起来是一组 */
+.cats.has-sub {
+  padding-bottom: 6px;
+}
+.sub-row {
   padding: 0 18px 11px;
 }
 

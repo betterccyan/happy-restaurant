@@ -10,6 +10,8 @@
 // 食材行沿用 DishEdit 里的写法「番茄 2 个」，买菜清单能直接解析聚合。
 // 只写需要买的食材，盐、油、生抽这类调料不写，否则会污染买菜清单。
 
+import { guessSub, SUB_PRESETS } from '../lib/subcat'
+
 export const DISH_KB_RAW = {
   早餐: `
 白粥|70|大米 50 克|稀饭,大米粥|🥣
@@ -527,6 +529,11 @@ function compose(norm) {
  * 返回 null 表示认不出来（不打扰用户）
  * kind: 'dish' 菜谱库命中 / 'compose' 按食材估算
  */
+// 猜二级分类（早餐饮品/餐点、午晚餐主食/菜品），加餐没有二级
+function subOf(name, category) {
+  return guessSub(name, category, SUB_PRESETS[category] || [])
+}
+
 export function inferDish(rawName) {
   const norm = normalizeInput(rawName)
   if (norm.length < 2) return null
@@ -540,6 +547,7 @@ export function inferDish(rawName) {
       ingredients: linesOf(exact.ings),
       emoji: exact.emoji,
       category: exact.category,
+      sub: subOf(exact.name, exact.category),
       confidence: 1,
       note: '菜谱库里有一模一样的'
     }
@@ -566,6 +574,7 @@ export function inferDish(rawName) {
       ingredients: linesOf(d.ings),
       emoji: d.emoji,
       category: d.category,
+      sub: subOf(d.name, d.category),
       confidence: 0.75,
       note: '和「' + d.name + '」最接近'
     }
@@ -581,6 +590,7 @@ export function inferDish(rawName) {
     ingredients: linesOf(c.ings),
     emoji: c.emoji,
     category: c.category,
+    sub: subOf(norm, c.category),
     confidence: c.matched.length >= 2 ? 0.55 : 0.4,
     matched: c.matched,
     note: '按名称里的食材估算'

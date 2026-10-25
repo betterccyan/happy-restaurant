@@ -1,10 +1,16 @@
 // 首次启动的示例数据：让 App 一打开就能点菜
-export const SEED_CATEGORIES = ['早餐', '中晚餐', '加餐']
+// 二级分类：早餐分饮品/餐点，午晚餐分主食/菜品，加餐不分
+export const SEED_CATEGORIES = [
+  { name: '早餐', subs: ['饮品', '餐点'] },
+  { name: '中晚餐', subs: ['主食', '菜品'] },
+  { name: '加餐', subs: [] }
+]
 
 export const SEED_DISHES = [
   {
     name: '番茄炒蛋',
     category: '中晚餐',
+    sub: '菜品',
     emoji: '🍅',
     description: '酸甜下饭，永远的神',
     calories: 180,
@@ -14,6 +20,7 @@ export const SEED_DISHES = [
   {
     name: '宫保鸡丁',
     category: '中晚餐',
+    sub: '菜品',
     emoji: '🍗',
     description: '微辣带甜，花生要脆',
     calories: 420,
@@ -44,6 +51,7 @@ export const SEED_DISHES = [
   {
     name: '青椒土豆丝',
     category: '中晚餐',
+    sub: '菜品',
     emoji: '🥔',
     description: '脆爽，米饭杀手',
     calories: 210,
@@ -63,6 +71,7 @@ export const SEED_DISHES = [
   {
     name: '红烧排骨',
     category: '中晚餐',
+    sub: '菜品',
     emoji: '🍖',
     description: '慢炖一小时，肉离骨',
     calories: 520,
@@ -72,6 +81,7 @@ export const SEED_DISHES = [
   {
     name: '清蒸鲈鱼',
     category: '中晚餐',
+    sub: '菜品',
     emoji: '🐟',
     description: '鲜，只用盐和葱姜',
     calories: 260,
@@ -81,6 +91,7 @@ export const SEED_DISHES = [
   {
     name: '蒜蓉生菜',
     category: '中晚餐',
+    sub: '菜品',
     emoji: '🥬',
     description: '大火快炒三十秒',
     calories: 90,
@@ -90,6 +101,7 @@ export const SEED_DISHES = [
   {
     name: '紫菜蛋花汤',
     category: '中晚餐',
+    sub: '菜品',
     emoji: '🍲',
     description: '三分钟出锅',
     calories: 80,
@@ -99,6 +111,7 @@ export const SEED_DISHES = [
   {
     name: '米饭',
     category: '中晚餐',
+    sub: '主食',
     emoji: '🍚',
     description: '一碗刚好',
     calories: 230,
@@ -119,6 +132,7 @@ export const SEED_DISHES = [
   {
     name: '小笼包',
     category: '早餐',
+    sub: '餐点',
     emoji: '🥟',
     description: '皮薄汁多，一屉六个',
     calories: 280,
@@ -139,6 +153,7 @@ export const SEED_DISHES = [
   {
     name: '燕麦粥',
     category: '早餐',
+    sub: '餐点',
     emoji: '🥣',
     description: '暖胃，加蜂蜜更好',
     calories: 150,
@@ -148,6 +163,7 @@ export const SEED_DISHES = [
   {
     name: '煎蛋',
     category: '早餐',
+    sub: '餐点',
     emoji: '🍳',
     description: '边上要焦一点',
     calories: 120,
@@ -168,6 +184,7 @@ export const SEED_DISHES = [
   {
     name: '豆浆',
     category: '早餐',
+    sub: '饮品',
     emoji: '🥛',
     description: '现磨，不加糖',
     calories: 90,
@@ -177,6 +194,7 @@ export const SEED_DISHES = [
   {
     name: '水果拼盘',
     category: '加餐',
+    sub: '',
     emoji: '🍉',
     description: '当季水果切一盘',
     calories: 110,
@@ -186,6 +204,7 @@ export const SEED_DISHES = [
   {
     name: '酸奶',
     category: '加餐',
+    sub: '',
     emoji: '🥗',
     description: '冰箱里的那一盒',
     calories: 130,
