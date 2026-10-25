@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { route, navigate, resetTo } from '../store/router'
 import { db } from '../data/db'
-import { haptic } from '../store/app'
 
 const isChef = computed(() => db.profile.role === 'chef')
 const pendingCount = computed(() => db.orders.filter((o) => o.status === 'pending').length)
@@ -24,7 +23,6 @@ const tabs = computed(() =>
 
 function go(tab) {
   if (route.name === tab.name) return
-  haptic()
   resetTo(tab.name)
 }
 </script>
