@@ -28,7 +28,8 @@ const hiddenCount = computed(() => db.dishes.filter((d) => !d.available).length)
 function toggle(dish) {
   haptic()
   toggleDishAvailable(dish.id)
-  toast(dish.available ? '已下架，家人看不到' : '已上架')
+  // dish.available 此时已是切换后的新值，提示语要跟着新状态说
+  toast(dish.available ? '已上架，家人能看到' : '已下架，家人看不到')
 }
 
 function create() {
@@ -59,7 +60,7 @@ function edit(dish) {
         </button>
       </div>
       <button class="filter-btn" :class="{ on: onlyHidden }" @click="onlyHidden = !onlyHidden">
-        <AppIcon name="image" :size="15" :stroke="1.9" />
+        <AppIcon name="eyeOff" :size="16" :stroke="1.9" />
         只看下架
       </button>
     </div>
@@ -82,8 +83,13 @@ function edit(dish) {
     <div class="scroll has-tabbar">
       <div class="page-pad">
         <div v-if="list.length === 0" class="card">
-          <EmptyState icon="📖" title="没有匹配的菜品" hint="换个关键词，或者点右上角加一道新菜">
-            <button class="btn btn-primary btn-sm" @click="create">新增菜品</button>
+          <EmptyState
+            :icon="onlyHidden ? '✅' : '📖'"
+            :title="onlyHidden ? '没有下架的菜' : '没有匹配的菜品'"
+            :hint="onlyHidden ? '所有菜都在正常售卖，家人都能看到' : '换个关键词，或者点右上角加一道新菜'"
+          >
+            <button v-if="onlyHidden" class="btn btn-sm" @click="onlyHidden = false">看全部菜品</button>
+            <button v-else class="btn btn-primary btn-sm" @click="create">新增菜品</button>
           </EmptyState>
         </div>
 
@@ -198,6 +204,13 @@ function edit(dish) {
   color: var(--ink-3);
   text-decoration: line-through;
   text-decoration-color: rgba(18, 22, 27, 0.22);
+}
+
+/* 这一页一行要塞下「开关 + 箭头」，360dp 屏上正文会被挤掉 6px，
+   收一收间距把描述行让出来 */
+.row {
+  gap: 10px;
+  padding-right: 13px;
 }
 
 .switch {
