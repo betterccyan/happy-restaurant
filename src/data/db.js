@@ -1,8 +1,20 @@
 import { reactive, watch } from 'vue'
 import { SEED_CATEGORIES, SEED_DISHES } from './seed'
 import { normalizeOptions } from '../lib/options'
+import { putSnapshot, autoSnapshotToday } from './snapshots'
 
 const KEY = 'xfk_db_v1'
+const BROKEN_KEY = 'xfk_db_broken'
+// 只在「字段含义变了、必须改写数据」时才加 1。单纯加字段不需要动它：
+// normalize() 会给老数据补齐新字段，版本号一变就重置的老逻辑才是数据丢失的主因。
+const DB_VERSION = 1
+
+// 本次载入的结果，App.vue 据此提示（'fresh' 首次 / 'ok' / 'migrated' / 'broken'）
+export const loadInfo = reactive({ mode: 'ok', note: '', at: Date.now() })
+// 写入状态：配额满 / 隐私模式等导致存不进去时，界面必须告诉用户
+export const storageState = reactive({ errors: 0, message: '', at: 0 })
+
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v)
 
 function nextId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -29,34 +41,127 @@ function seed() {
   }
 }
 
-function load() {
+// 补齐字段（老数据缺什么补什么，未知字段原样保留，绝不整体重写）
+function normalize(input, from) {
+  const d = input
+  d.profile = Object.assign({ role: '', nickname: '' }, isObj(d.profile) ? d.profile : {})
+  d.settings = Object.assign(
+    { name: '幸福小馆', notice: '今天想吃点什么？' },
+    isObj(d.settings) ? d.settings : {}
+  )
+  if (!Array.isArray(d.categories)) d.categories = []
+  if (!Array.isArray(d.dishes)) d.dishes = []
+  if (!Array.isArray(d.orders)) d.orders = []
+  d.checked = isObj(d.checked) ? d.checked : {}
+  if (typeof d.lastMemberName !== 'string') d.lastMemberName = ''
+
+  const len = d.dishes.length
+  d.dishes = d.dishes.filter(isObj).map((dish, i) => ({
+    ...dish,
+    id: dish.id || nextId(),
+    name: String(dish.name || '未命名').slice(0, 20),
+    category: dish.category || d.categories[0]?.name || '中晚餐',
+    emoji: dish.emoji || '🍽️',
+    description: String(dish.description || '').slice(0, 40),
+    calories: Math.max(0, Math.round(Number(dish.calories) || 0)),
+    ingredients: String(dish.ingredients || ''),
+    options: normalizeOptions(dish.options),
+    available: dish.available !== false,
+    imageKey: dish.imageKey || '',
+    createdAt: dish.createdAt || new Date(Date.now() - (len - i) * 60000).toISOString()
+  }))
+  // 数据来自更新版本的 App 时，不要把版本号改小
+  d.v = Math.max(Number(from) || 0, DB_VERSION)
+  return d
+}
+
+// 坏数据先留档再覆盖——用户还有机会从「备份」里找回，也能人工导出排查
+function stashBroken(raw) {
   try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return seed()
-    const data = JSON.parse(raw)
-    if (!data || data.v !== 1) return seed()
-    // 兜底补齐字段
-    data.profile = data.profile || { role: '', nickname: '' }
-    data.settings = data.settings || { name: '幸福小馆', notice: '' }
-    data.categories = data.categories || []
-    data.dishes = data.dishes || []
-    data.orders = data.orders || []
-    data.checked = data.checked || {}
-    return data
+    localStorage.setItem(BROKEN_KEY, JSON.stringify({ at: Date.now(), raw: String(raw).slice(0, 400000) }))
   } catch {
+    /* 存不下就算了，至少内存里还有原串 */
+  }
+}
+
+function load() {
+  let raw = ''
+  try {
+    raw = localStorage.getItem(KEY) || ''
+  } catch {
+    raw = ''
+  }
+  if (!raw) {
+    loadInfo.mode = 'fresh'
     return seed()
   }
+
+  let data = null
+  try {
+    data = JSON.parse(raw)
+  } catch (e) {
+    stashBroken(raw)
+    loadInfo.mode = 'broken'
+    loadInfo.note = '数据文件解析失败'
+    return seed()
+  }
+
+  const from = Number(data && data.v) || 0
+  const noShape =
+    !isObj(data) ||
+    // v 缺失且菜和分类都没有：基本可以断定不是我们的数据
+    (from === 0 &&
+      !(Array.isArray(data.dishes) && data.dishes.length) &&
+      !(Array.isArray(data.categories) && data.categories.length))
+  if (noShape) {
+    stashBroken(raw)
+    loadInfo.mode = 'broken'
+    loadInfo.note = '数据结构不完整'
+    return seed()
+  }
+
+  const d = normalize(data, from)
+  if (from && from !== DB_VERSION) {
+    if (from > DB_VERSION) {
+      // 数据比 App 新（降级安装过），按原样保留，只是补齐字段
+      loadInfo.mode = 'ok'
+      loadInfo.note = '数据版本 v' + from + ' 高于 App（v' + DB_VERSION + '），已按原样保留'
+    } else {
+      loadInfo.mode = 'migrated'
+      loadInfo.note = 'v' + from + ' → v' + DB_VERSION
+    }
+  } else {
+    loadInfo.mode = 'ok'
+  }
+  return d
 }
 
 export const db = reactive(load())
 
+const isQuotaError = (e) =>
+  !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014)
+
 let timer = null
+let lastNotified = 0
 function persist() {
   clearTimeout(timer)
   timer = setTimeout(() => {
     try {
       localStorage.setItem(KEY, JSON.stringify(db))
+      if (storageState.errors) {
+        storageState.errors = 0
+        storageState.message = ''
+      }
     } catch (e) {
+      storageState.errors += 1
+      storageState.message = isQuotaError(e)
+        ? '本机存储已满，刚才的改动没存上'
+        : '保存失败：' + (e.message || '未知错误')
+      // 15 秒内只提醒一次，否则输入一个字就弹一次
+      if (Date.now() - lastNotified > 15000) {
+        lastNotified = Date.now()
+        storageState.at = Date.now()
+      }
       console.warn('本地存储写入失败', e)
     }
   }, 60)
@@ -228,26 +333,72 @@ export function toggleChecked(day, name) {
   else map[name] = true
 }
 
+/* ---------------- 点单偏好：常点 / 最近吃过 ---------------- */
+// dishId -> { qty 总份数, times 点过几次, lastAt 最近一次时间 }
+// 已取消的单不计入，否则手滑取消也会污染「常点」
+export function dishStats() {
+  const map = {}
+  for (const o of db.orders) {
+    if (!o || o.status === 'cancelled') continue
+    for (const it of o.items || []) {
+      const key = it.dishId || it.id
+      if (!key) continue
+      const s = map[key] || (map[key] = { qty: 0, times: 0, lastAt: '' })
+      s.qty += Number(it.qty) || 1
+      s.times += 1
+      if (!s.lastAt || String(o.createdAt) > s.lastAt) s.lastAt = String(o.createdAt || '')
+    }
+  }
+  return map
+}
+
+// 这道菜上次点的规格——「今晚这桌」按它自动套用，比「默认第一个选项」靠谱得多
+export function preferredOptions(dishId) {
+  if (!dishId) return []
+  const orders = db.orders
+    .filter((o) => o && o.status !== 'cancelled')
+    .slice()
+    .sort((a, b) => (String(a.createdAt) < String(b.createdAt) ? 1 : -1))
+  for (const o of orders) {
+    for (const it of o.items || []) {
+      if ((it.dishId || it.id) === dishId && Array.isArray(it.options) && it.options.length) {
+        return normalizeOptions(it.options)
+      }
+    }
+  }
+  return []
+}
+
 /* ---------------- 备份 / 恢复 ---------------- */
 export function exportJson() {
   return JSON.stringify(db, null, 2)
 }
 
+// 覆盖前先留一份快照，误点「恢复」不至于把当前数据也搭进去
+function snapshotHere(tag) {
+  putSnapshot(JSON.stringify(db), tag).catch((e) => console.warn('快照失败', e))
+}
+
 export function importJson(text) {
   const data = JSON.parse(text)
-  if (!data || typeof data !== 'object') throw new Error('文件格式不对')
-  Object.assign(db, {
-    v: 1,
-    profile: data.profile || { role: '', nickname: '' },
-    settings: data.settings || { name: '幸福小馆', notice: '' },
-    categories: data.categories || [],
-    dishes: data.dishes || [],
-    orders: data.orders || [],
-    checked: data.checked || {},
-    lastMemberName: data.lastMemberName || ''
-  })
+  if (!isObj(data)) throw new Error('文件格式不对')
+  if (!Array.isArray(data.dishes) && !Array.isArray(data.orders) && !Array.isArray(data.categories)) {
+    throw new Error('里面没有菜品或点菜单')
+  }
+  snapshotHere('before-restore')
+  Object.assign(db, normalize(data, Number(data.v) || 0))
+}
+
+// 每天第一份自动快照，供误操作后回退
+export async function autoSnapshot() {
+  try {
+    await autoSnapshotToday(JSON.stringify(db))
+  } catch (e) {
+    console.warn('自动备份失败', e)
+  }
 }
 
 export function resetAll() {
+  snapshotHere('before-reset')
   Object.assign(db, seed())
 }

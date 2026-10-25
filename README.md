@@ -10,7 +10,7 @@
   <img alt="platform" src="https://img.shields.io/badge/Android-6.0%2B-3DDC84?logo=android&logoColor=white&style=flat-square">
   <img alt="vue" src="https://img.shields.io/badge/Vue-3.5-42b883?logo=vue.js&logoColor=white&style=flat-square">
   <img alt="capacitor" src="https://img.shields.io/badge/Capacitor-7-119EFF?style=flat-square">
-  <img alt="version" src="https://img.shields.io/badge/version-1.0.4-2C7BF2?style=flat-square">
+  <img alt="version" src="https://img.shields.io/badge/version-1.0.5-2C7BF2?style=flat-square">
   <img alt="size" src="https://img.shields.io/badge/APK-4.4MB-8A929E?style=flat-square">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-2C7BF2?style=flat-square">
 </p>
@@ -49,7 +49,9 @@
 |---|:---:|:---:|
 | 浏览菜单、按餐次筛选、搜菜名 | ✓ | ✓ |
 | 选规格（辣度、加料，必选项未选不能加入） | ✓ | |
-| 份数加减、备注、随机推荐、再来一份 | ✓ | |
+| 份数加减、备注、再来一份 | ✓ | |
+| 「今晚这桌」：按道数随机配一桌，可单换、可整桌换 | ✓ | |
+| 「常点 / 最近吃过」排序，一眼看到家里最常点的 | ✓ | |
 | 查看自己的点单与做菜进度 | ✓ | |
 | 工作台：待做 / 今日点单 / 菜品数 | | ✓ |
 | 接单流转：开始做 → 已上桌 / 不做了 | | ✓ |
@@ -57,6 +59,7 @@
 | 菜品上下架（下架后家人菜单里消失） | | ✓ |
 | 买菜清单按今日未取消订单聚合，一键复制 | | ✓ |
 | 分类管理、店名与公告、数据备份 / 恢复 | | ✓ |
+| 自动备份：每天首次打开留一份，保留最近 7 份 | | ✓ |
 
 ## 技术栈
 
@@ -128,8 +131,8 @@ npm run apk
 app-android/
 ├── src/
 │   ├── views/            11 个页面（RoleSelect / OwnerHome / MenuPage / Checkout …）
-│   ├── components/       TabBar、PageHeader、Stepper、OptionSheet、DishAvatar …
-│   ├── data/             db.js（唯一数据出口）+ seed.js（14 道初始菜品）
+│   ├── components/       TabBar、PageHeader、Stepper、OptionSheet、TableSheet、DishAvatar …
+│   ├── data/             db.js（唯一数据出口）+ snapshots.js（自动备份）+ seed.js（14 道初始菜品）
 │   ├── store/            router.js（hash 路由）、app.js（toast / haptic）
 │   ├── lib/              options.js、ingredients.js、image-store.js、util.js
 │   └── styles/           tokens.css（设计变量）、base.css（通用组件样式）
@@ -145,10 +148,22 @@ app-android/
 |---|---|---|
 | 菜品、分类、订单、设置、当前身份 | localStorage | `xfk_db_v1` |
 | 菜品图片（压缩后的 blob） | IndexedDB | `xfk_images` / `blobs` |
+| 自动备份快照（最近 7 份） | IndexedDB | `xfk_backup` / `snapshots` |
+| 损坏数据的原样留档 | localStorage | `xfk_db_broken` |
 
 业务数据走 `src/data/db.js` 这一个出口，用 Vue `reactive` 保证响应式，改动自动落盘。**要接云端同步，只改这一个文件**。
 
-localStorage 只有 5MB 配额，所以图片单独放 IndexedDB —— 这是两套存储分开的原因。
+localStorage 只有 5MB 配额，所以图片和快照都放 IndexedDB —— 这是三套存储分开的原因。
+
+### 数据不会悄悄没掉
+
+单机存储最怕三件事，这里都做了兜底：
+
+1. **版本变更不再重置数据**。早期写法是 `if (data.v !== 1) return seed()`，哪天一加字段，家里攒的菜和订单就在下次打开时变回示例菜。现在版本变化只走 `normalize()` 补齐字段，未知字段原样保留（数据来自更新版本的 App 时反而不会降级丢失）。
+2. **解析失败先留档再覆盖**。坏数据原文会存进 `xfk_db_broken`，然后尝试用最近一份自动备份恢复，并明确告诉你恢复的是哪一刻的数据。
+3. **写不进去要吭声**。配额满（或隐私模式）导致 `localStorage.setItem` 失败时，界面弹提示「本机存储已满，刚才的改动没存上」；15 秒内只提醒一次，不会输入一个字弹一次。
+
+自动备份在「家庭信息 → 数据 → 自动备份」里可见、可手动补一份、可一键恢复到任意一份。清空数据和覆盖恢复之前也会先自动留一份，误点还有回头路。
 
 ## 设计规范
 

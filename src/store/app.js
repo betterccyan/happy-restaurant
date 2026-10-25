@@ -99,6 +99,9 @@ export function toast(text, duration = 1800) {
   }, duration)
 }
 
+/* ---------------- 外壳状态（底部 dock 随滚动收起） ---------------- */
+export const ui = reactive({ dockHidden: false })
+
 /* ---------------- 轻反馈 ---------------- */
 export function haptic() {
   if (navigator.vibrate) {

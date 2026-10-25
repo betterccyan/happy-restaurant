@@ -85,4 +85,18 @@ export function missingRequired(groups) {
   ).length > 0
 }
 
+// 批量套规格时的兜底（今晚这桌）：单选组取第一个选项，多选组留空
+export function defaultOptions(options) {
+  return normalizeOptions(
+    normalizeOptions(options)
+      .filter((g) => !g.multi && g.choices.length)
+      .map((g) => ({
+        name: g.name,
+        multi: false,
+        required: g.required,
+        choices: [g.choices[0]]
+      }))
+  )
+}
+
 export { MAX_GROUPS, MAX_CHOICES }

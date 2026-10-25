@@ -39,6 +39,20 @@ export function isToday(iso) {
   return todayKey(d) === todayKey()
 }
 
+// 相对天数：今天 / 昨天 / N 天前 / 具体日期
+export function daysAgoText(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const start = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const diff = Math.round((start(new Date()) - start(d)) / 86400000)
+  if (diff <= 0) return '今天'
+  if (diff === 1) return '昨天'
+  if (diff < 7) return diff + ' 天前'
+  if (diff < 30) return Math.floor(diff / 7) + ' 周前'
+  return Math.floor(diff / 30) + ' 个月前'
+}
+
 export function todayText() {
   const d = new Date()
   const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]

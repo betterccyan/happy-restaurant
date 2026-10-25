@@ -1,8 +1,9 @@
 <script setup>
 import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
-import { route, navigate, resetTo } from '../store/router'
+import { route, resetTo } from '../store/router'
 import { db } from '../data/db'
+import { ui } from '../store/app'
 
 const isChef = computed(() => db.profile.role === 'chef')
 const pendingCount = computed(() => db.orders.filter((o) => o.status === 'pending').length)
@@ -28,7 +29,7 @@ function go(tab) {
 </script>
 
 <template>
-  <nav class="tabbar-wrap">
+  <nav class="tabbar-wrap" :class="{ hide: ui.dockHidden }">
     <div class="tabbar">
       <button
         v-for="tab in tabs"
@@ -61,6 +62,19 @@ function go(tab) {
   justify-content: center;
   padding: 0 16px calc(11px + var(--safe-bottom));
   z-index: 60;
+  pointer-events: none;
+  /* 随滚动收起：往下滚藏起来，往上滚浮回来 */
+  transition: transform 0.34s var(--ease-out), opacity 0.26s ease;
+  will-change: transform, opacity;
+}
+
+.tabbar-wrap.hide {
+  transform: translate3d(0, calc(100% + 22px), 0);
+  opacity: 0;
+}
+
+/* 收起时两侧留白也不能挡点击 */
+.tabbar-wrap.hide .tabbar {
   pointer-events: none;
 }
 

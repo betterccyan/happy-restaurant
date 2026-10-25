@@ -1,9 +1,11 @@
 <script setup>
-import { computed, onMounted, defineAsyncComponent } from 'vue'
+import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import TabBar from './components/TabBar.vue'
 import { route, back } from './store/router'
-import { db } from './data/db'
-import { toastState } from './store/app'
+import { db, loadInfo, storageState, importJson, autoSnapshot } from './data/db'
+import { toastState, toast, ui } from './store/app'
+import { latestSnapshot } from './data/snapshots'
+import { formatTime } from './lib/util'
 
 import RoleSelect from './views/RoleSelect.vue'
 import OwnerHome from './views/OwnerHome.vue'
@@ -36,7 +38,67 @@ const TAB_PAGES = ['owner-home', 'order-manage', 'dish-manage', 'shop-settings',
 const view = computed(() => VIEWS[route.name] || RoleSelect)
 const showTab = computed(() => TAB_PAGES.includes(route.name) && !!db.profile.role)
 
+/* 数据安全带：坏数据先从最近一份快照救回来 */
+async function recoverIfBroken() {
+  if (loadInfo.mode !== 'broken') return
+  let snap = null
+  try {
+    snap = await latestSnapshot()
+  } catch {
+    snap = null
+  }
+  if (snap && snap.payload) {
+    try {
+      importJson(snap.payload)
+      toast('数据损坏，已恢复到 ' + formatTime(new Date(snap.at).toISOString()) + ' 的自动备份', 3600)
+      return
+    } catch {
+      /* 快照也坏了，落到下面的提示 */
+    }
+  }
+  toast('数据读取失败，已重置为示例数据', 3200)
+}
+
+/* 底部 dock 随滚动收起：向下滚藏起来，向上滚或回到顶部浮出来 */
+const tops = new WeakMap()
+function onScroll(e) {
+  const el = e.target
+  if (!el || el.nodeType !== 1) return
+  // 只认纵向可滚动的容器，横向的分类 chips 会被这里挡掉
+  if (el.scrollHeight <= el.clientHeight + 4) return
+  const top = el.scrollTop
+  const prev = tops.has(el) ? tops.get(el) : top
+  tops.set(el, top)
+  if (top <= 6) {
+    ui.dockHidden = false
+    return
+  }
+  const dy = top - prev
+  if (dy > 6) ui.dockHidden = true
+  else if (dy < -6) ui.dockHidden = false
+}
+
+watch(
+  () => route.key,
+  () => {
+    ui.dockHidden = false
+  }
+)
+
+// 存储写失败（配额满）必须让用户看到，否则改动会静默丢失
+watch(
+  () => storageState.at,
+  (at) => {
+    if (at) toast(storageState.message, 3000)
+  }
+)
+
 onMounted(async () => {
+  await recoverIfBroken()
+  autoSnapshot()
+
+  document.addEventListener('scroll', onScroll, { capture: true, passive: true })
+
   // 安卓物理返回键 → 应用内路由
   try {
     const { App: CapApp } = await import('@capacitor/app')
@@ -49,6 +111,10 @@ onMounted(async () => {
       back()
     })
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('scroll', onScroll, { capture: true })
 })
 </script>
 

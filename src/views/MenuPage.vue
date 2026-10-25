@@ -5,7 +5,8 @@ import DishAvatar from '../components/DishAvatar.vue'
 import Stepper from '../components/Stepper.vue'
 import EmptyState from '../components/EmptyState.vue'
 import OptionSheet from '../components/OptionSheet.vue'
-import { db } from '../data/db'
+import TableSheet from '../components/TableSheet.vue'
+import { db, dishStats } from '../data/db'
 import { navigate } from '../store/router'
 import {
   addToCart,
@@ -15,9 +16,10 @@ import {
   dishQtyInCart,
   decrementDish,
   haptic,
-  toast
+  toast,
+  ui
 } from '../store/app'
-import { mealCategoryByHour } from '../lib/util'
+import { mealCategoryByHour, daysAgoText } from '../lib/util'
 import { resolveImage } from '../lib/image-store'
 
 const activeCat = ref('')
@@ -25,6 +27,9 @@ const keyword = ref('')
 const searching = ref(false)
 const sheetDish = ref(null)
 const lastLuckyId = ref('')
+const showTable = ref(false)
+// 'default' 按上架顺序 / 'freq' 常点 / 'recent' 最近吃过
+const sortMode = ref('default')
 
 const cats = computed(() => [...db.categories].sort((a, b) => a.sort - b.sort))
 const availableDishes = computed(() => db.dishes.filter((d) => d.available))
@@ -37,13 +42,75 @@ const list = computed(() => {
   return arr
 })
 
+/* ---- 常点 / 最近吃过 ---- */
+const stats = computed(() => dishStats())
+
+function statOf(id) {
+  return stats.value[id] || null
+}
+
+function toggleSort(mode) {
+  haptic()
+  sortMode.value = sortMode.value === mode ? 'default' : mode
+}
+
+const sortedList = computed(() => {
+  const arr = list.value.slice()
+  if (sortMode.value === 'freq') {
+    arr.sort((a, b) => {
+      const sa = statOf(a.id)
+      const sb = statOf(b.id)
+      const qa = sa ? sa.qty : 0
+      const qb = sb ? sb.qty : 0
+      if (qa !== qb) return qb - qa
+      return String(sb ? sb.lastAt : '').localeCompare(String(sa ? sa.lastAt : ''))
+    })
+  } else if (sortMode.value === 'recent') {
+    arr.sort((a, b) => {
+      const la = statOf(a.id) ? statOf(a.id).lastAt : ''
+      const lb = statOf(b.id) ? statOf(b.id).lastAt : ''
+      if (la === lb) return 0
+      if (!la) return 1
+      if (!lb) return -1
+      return lb.localeCompare(la)
+    })
+  }
+  return arr
+})
+
+function rowHint(d) {
+  const s = statOf(d.id)
+  if (!s) return ''
+  if (sortMode.value === 'recent') return daysAgoText(s.lastAt) + '吃过'
+  if (sortMode.value === 'freq') return '点过 ' + s.qty + ' 次'
+  return s.qty >= 3 ? '点过 ' + s.qty + ' 次' : ''
+}
+
+/* ---- 今晚这桌 ---- */
+const pool = computed(() =>
+  activeCat.value ? availableDishes.value.filter((d) => d.category === activeCat.value) : availableDishes.value
+)
+
+function openTable() {
+  if (availableDishes.value.length === 0) {
+    toast('菜单还是空的')
+    return
+  }
+  haptic()
+  showTable.value = true
+}
+
+function onTableOne() {
+  showTable.value = false
+  lucky()
+}
+
+function onTableAdded(n) {
+  toast('已加入 ' + n + ' 道菜，去确认吧')
+}
+
 const count = computed(() => cartCount())
 const calories = computed(() => cartCalories())
-
-const cartPreview = computed(() => {
-  // 按加入顺序取名字
-  return ''
-})
 
 onMounted(() => {
   const def = mealCategoryByHour()
@@ -109,9 +176,9 @@ async function lucky() {
           <div class="tb-name">{{ db.settings.name || '幸福小馆' }}</div>
           <div class="tb-notice">{{ db.settings.notice || '今天想吃点什么？' }}</div>
         </div>
-        <button class="lucky press" @click="lucky">
+        <button class="lucky press" @click="openTable">
           <AppIcon name="sparkles" :size="16" :stroke="1.8" />
-          <span>随机</span>
+          <span>今晚这桌</span>
         </button>
       </div>
 
@@ -150,38 +217,56 @@ async function lucky() {
           <EmptyState icon="🍽️" title="这个分类还没有菜" hint="让主厨去「菜品管理」里加几道吧" />
         </div>
 
-        <div v-else class="dishes">
-          <div v-for="d in list" :key="d.id" class="dish card press" @click="quickAdd(d)">
-            <DishAvatar :image-key="d.imageKey" :emoji="d.emoji" :size="64" />
-            <div class="dish-main">
-              <div class="dish-name">{{ d.name }}</div>
-              <div v-if="d.description" class="dish-desc">{{ d.description }}</div>
-              <div class="dish-meta">
-                <span v-if="d.calories > 0" class="cal">
-                  <AppIcon name="fire" :size="11" :stroke="1.9" />{{ d.calories }} 千卡
-                </span>
-                <span v-if="d.options && d.options.length" class="opt-hint">可选规格</span>
-              </div>
-            </div>
-            <div class="dish-act" @click.stop>
-              <Stepper
-                v-if="dishQtyInCart(d.id) > 0"
-                :model-value="dishQtyInCart(d.id)"
-                :min="0"
-                @update:model-value="(v) => (v > dishQtyInCart(d.id) ? quickAdd(d) : decrementDish(d.id))"
-              />
-              <button v-else class="add-btn" @click="quickAdd(d)">
-                <AppIcon name="plus" :size="17" :stroke="2.4" />
+        <template v-else>
+          <!-- 排序：点一下切换，再点回默认 -->
+          <div class="list-bar">
+            <span class="lb-count">{{ sortedList.length }} 道菜</span>
+            <div class="lb-sorts">
+              <button class="sbtn" :class="{ on: sortMode === 'freq' }" @click="toggleSort('freq')">
+                常点
+              </button>
+              <button class="sbtn" :class="{ on: sortMode === 'recent' }" @click="toggleSort('recent')">
+                最近
               </button>
             </div>
           </div>
-        </div>
+
+          <div class="dishes">
+            <div v-for="d in sortedList" :key="d.id" class="dish card press" @click="quickAdd(d)">
+              <DishAvatar :image-key="d.imageKey" :emoji="d.emoji" :size="64" />
+              <div class="dish-main">
+                <div class="dish-title">
+                  <span class="dish-name">{{ d.name }}</span>
+                  <span v-if="rowHint(d)" class="stat-hint">{{ rowHint(d) }}</span>
+                </div>
+                <div v-if="d.description" class="dish-desc">{{ d.description }}</div>
+                <div class="dish-meta">
+                  <span v-if="d.calories > 0" class="cal">
+                    <AppIcon name="fire" :size="11" :stroke="1.9" />{{ d.calories }} 千卡
+                  </span>
+                  <span v-if="d.options && d.options.length" class="opt-hint">可选规格</span>
+                </div>
+              </div>
+              <div class="dish-act" @click.stop>
+                <Stepper
+                  v-if="dishQtyInCart(d.id) > 0"
+                  :model-value="dishQtyInCart(d.id)"
+                  :min="0"
+                  @update:model-value="(v) => (v > dishQtyInCart(d.id) ? quickAdd(d) : decrementDish(d.id))"
+                />
+                <button v-else class="add-btn" @click="quickAdd(d)">
+                  <AppIcon name="plus" :size="17" :stroke="2.4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
     <!-- 购物车栏 -->
     <Transition name="cart">
-      <div v-if="count > 0" class="cartbar-wrap">
+      <div v-if="count > 0" class="cartbar-wrap" :class="{ down: ui.dockHidden }">
         <button class="cartbar glass" @click="navigate('checkout')">
           <span class="cb-left">
             <span class="cb-badge">
@@ -199,6 +284,15 @@ async function lucky() {
     </Transition>
 
     <OptionSheet :dish="sheetDish" @close="sheetDish = null" @confirm="onSheetConfirm" />
+
+    <TableSheet
+      :show="showTable"
+      :pool="pool"
+      :category="activeCat"
+      @close="showTable = false"
+      @one="onTableOne"
+      @added="onTableAdded"
+    />
   </div>
 </template>
 
@@ -308,11 +402,48 @@ async function lucky() {
   padding-bottom: calc(var(--tabbar-h) + 112px + var(--safe-bottom));
 }
 
+.list-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 2px 0;
+}
+.lb-count {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.lb-sorts {
+  display: flex;
+  gap: 6px;
+}
+.sbtn {
+  height: 26px;
+  padding: 0 11px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(18, 22, 27, 0.04);
+  transition: color 0.22s var(--ease-out), background 0.22s var(--ease-out),
+    box-shadow 0.22s var(--ease-out);
+}
+.sbtn.on {
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(44, 123, 242, 0.24);
+}
+.sbtn:active {
+  transform: scale(0.94);
+}
+
 .dishes {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-top: 4px;
+  padding-top: 10px;
 }
 
 .dish {
@@ -327,13 +458,30 @@ async function lucky() {
   min-width: 0;
   padding-right: 4px;
 }
+.dish-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .dish-name {
+  min-width: 0;
   font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.stat-hint {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: rgba(18, 22, 27, 0.05);
+  font-variant-numeric: tabular-nums;
 }
 .dish-desc {
   font-size: 12.5px;
@@ -396,6 +544,11 @@ async function lucky() {
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 17px);
   padding: 0 15px;
   z-index: 55;
+  transition: transform 0.34s var(--ease-out);
+}
+/* dock 收起时，购物车栏降到 dock 原来的位置，底部不会留一片空 */
+.cartbar-wrap.down {
+  transform: translate3d(0, calc(var(--tabbar-h) + 6px), 0);
 }
 
 .cartbar {

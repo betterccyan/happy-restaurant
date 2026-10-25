@@ -1,15 +1,21 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { db, saveSettings, exportJson, importJson, resetAll } from '../data/db'
+import { listSnapshots, getSnapshot, putSnapshot } from '../data/snapshots'
 import { resetTo } from '../store/router'
 import { haptic, toast } from '../store/app'
+import { formatTime } from '../lib/util'
 
 const name = ref(db.settings.name)
 const notice = ref(db.settings.notice)
 const showRestore = ref(false)
 const restoreText = ref('')
+const showSnaps = ref(false)
+const snaps = ref([])
+const snapBusy = ref(false)
+const version = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : ''
 
 const dirty = computed(() => name.value !== db.settings.name || notice.value !== db.settings.notice)
 const dishCount = computed(() => db.dishes.length)
@@ -42,12 +48,68 @@ function doRestore() {
   }
   try {
     importJson(text)
+    syncFields()
     restoreText.value = ''
     showRestore.value = false
     haptic()
     toast('已恢复备份')
   } catch (e) {
     toast('恢复失败：' + e.message)
+  }
+}
+
+// 恢复会整体替换 db.settings，页面里的本地副本得跟着刷新，否则输入框还显示旧值
+function syncFields() {
+  name.value = db.settings.name
+  notice.value = db.settings.notice
+}
+
+/* ---- 自动备份 ---- */
+const SNAP_TAG = { auto: '自动', manual: '手动', 'before-reset': '清空前', 'before-restore': '覆盖前' }
+const tagLabel = (tag) => SNAP_TAG[tag] || tag || '备份'
+const formatSnapTime = (at) => formatTime(new Date(at).toISOString())
+const snapSize = (size) => Math.max(1, Math.round((Number(size) || 0) / 1024)) + ' KB'
+
+async function refreshSnaps() {
+  try {
+    snaps.value = await listSnapshots()
+  } catch {
+    snaps.value = []
+  }
+}
+
+function toggleSnaps() {
+  showSnaps.value = !showSnaps.value
+  if (showSnaps.value) refreshSnaps()
+}
+
+async function manualBackup() {
+  try {
+    await putSnapshot(JSON.stringify(db), 'manual')
+    await refreshSnaps()
+    haptic()
+    toast('已备份一份')
+  } catch (e) {
+    toast('备份失败：' + (e.message || '未知错误'))
+  }
+}
+
+async function restoreSnap(s) {
+  if (snapBusy.value) return
+  if (!window.confirm('用 ' + formatSnapTime(s.at) + ' 的备份覆盖当前数据？')) return
+  snapBusy.value = true
+  try {
+    const rec = await getSnapshot(s.id)
+    if (!rec || !rec.payload) throw new Error('这份备份读不出来')
+    importJson(rec.payload)
+    syncFields()
+    haptic()
+    toast('已恢复到 ' + formatSnapTime(s.at))
+    await refreshSnaps()
+  } catch (e) {
+    toast('恢复失败：' + (e.message || '未知错误'))
+  } finally {
+    snapBusy.value = false
   }
 }
 
@@ -58,6 +120,8 @@ function reset() {
   resetTo('role-select')
   toast('已重置')
 }
+
+onMounted(refreshSnaps)
 </script>
 
 <template>
@@ -113,6 +177,19 @@ function reset() {
             </div>
             <AppIcon name="chevronRight" :size="17" :stroke="2" class="row-arrow" />
           </button>
+          <button class="row" @click="toggleSnaps">
+            <div class="row-main">
+              <div class="row-title">自动备份</div>
+              <div class="row-desc">每天首次打开留一份，保留最近 7 份</div>
+            </div>
+            <AppIcon
+              name="chevronRight"
+              :size="17"
+              :stroke="2"
+              class="row-arrow"
+              :style="{ transform: showSnaps ? 'rotate(90deg)' : 'none' }"
+            />
+          </button>
           <button class="row" @click="reset">
             <div class="row-main">
               <div class="row-title danger-text">恢复示例数据</div>
@@ -134,12 +211,33 @@ function reset() {
           </div>
         </div>
 
+        <div v-if="showSnaps" class="restore anim-fade">
+          <div v-if="snaps.length === 0" class="snap-empty">
+            还没有备份。下次打开会自动留一份，也可以现在手动备份。
+          </div>
+          <div v-else class="snap-list">
+            <div v-for="s in snaps" :key="s.id" class="snap">
+              <div class="snap-main">
+                <div class="snap-line">
+                  {{ formatSnapTime(s.at) }}
+                  <span class="snap-tag">{{ tagLabel(s.tag) }}</span>
+                </div>
+                <div class="snap-meta mono-num">{{ snapSize(s.size) }}</div>
+              </div>
+              <button class="btn btn-soft btn-sm" :disabled="snapBusy" @click="restoreSnap(s)">
+                恢复
+              </button>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm snap-add" @click="manualBackup">立即备份一份</button>
+        </div>
+
         <!-- 关于 -->
         <div class="about">
           <div class="about-title">幸福小馆 · 家庭点单</div>
           <div class="about-line">数据全部保存在本机，不联网、不上传</div>
           <div class="about-line">设计语言参考 澎湃OS 4 柔光玻璃</div>
-          <div class="about-ver">v1.0.0</div>
+          <div class="about-ver">v{{ version }}</div>
         </div>
       </div>
     </div>
@@ -226,6 +324,56 @@ function reset() {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 10px;
+}
+
+.snap-empty {
+  padding: 6px 2px 10px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-3);
+}
+.snap-list {
+  display: flex;
+  flex-direction: column;
+}
+.snap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+}
+.snap + .snap {
+  border-top: 1px solid var(--hairline);
+}
+.snap-main {
+  flex: 1;
+  min-width: 0;
+}
+.snap-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-1);
+  font-variant-numeric: tabular-nums;
+}
+.snap-tag {
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+}
+.snap-meta {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+.snap-add {
+  width: 100%;
   margin-top: 10px;
 }
 
