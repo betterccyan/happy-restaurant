@@ -87,14 +87,17 @@ function go(tab) {
   height: var(--tabbar-h);
   border-radius: var(--r-pill);
   padding: 5px;
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 250, 254, 0.76));
-  -webkit-backdrop-filter: blur(46px) saturate(175%) brightness(1.03);
-  backdrop-filter: blur(46px) saturate(175%) brightness(1.03);
-  /* 冷白玻璃：顶部一道高光 + 外圈极淡暗线定形 + 底部内阴影做出厚度 */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -10px 14px -14px rgba(16, 24, 40, 0.1), 0 0 0 0.5px rgba(17, 24, 39, 0.06),
-    0 2px 6px -2px rgba(16, 24, 40, 0.05), 0 18px 40px -20px rgba(16, 24, 40, 0.32);
+  /* 小米相册式：底色接近实色（约 99%），后面内容基本压死，
+     残留的那一点点渗透交给 blur 糊掉，所以既干净又不死板 */
+  background-image: linear-gradient(180deg, rgba(253, 254, 255, 0.991), rgba(244, 247, 252, 0.974));
+  -webkit-backdrop-filter: blur(30px) saturate(128%);
+  backdrop-filter: blur(30px) saturate(128%);
+  /* 边缘只留一道高光 + 一条极淡暗线定形，阴影比之前轻，
+     否则实色底配上重投影会显得像一块悬浮贴片 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 0 0 0.5px rgba(15, 23, 42, 0.08),
+    0 4px 14px -9px rgba(16, 24, 40, 0.16), 0 16px 34px -24px rgba(16, 24, 40, 0.24);
   pointer-events: auto;
 }
 
