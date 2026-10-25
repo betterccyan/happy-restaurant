@@ -10,7 +10,7 @@
   <img alt="platform" src="https://img.shields.io/badge/Android-6.0%2B-3DDC84?logo=android&logoColor=white&style=flat-square">
   <img alt="vue" src="https://img.shields.io/badge/Vue-3.5-42b883?logo=vue.js&logoColor=white&style=flat-square">
   <img alt="capacitor" src="https://img.shields.io/badge/Capacitor-7-119EFF?style=flat-square">
-  <img alt="version" src="https://img.shields.io/badge/version-1.0.3-2C7BF2?style=flat-square">
+  <img alt="version" src="https://img.shields.io/badge/version-1.0.4-2C7BF2?style=flat-square">
   <img alt="size" src="https://img.shields.io/badge/APK-4.4MB-8A929E?style=flat-square">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-2C7BF2?style=flat-square">
 </p>
