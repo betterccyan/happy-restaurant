@@ -31,7 +31,7 @@ function go(tab) {
 
 <template>
   <nav class="tabbar-wrap">
-    <div class="tabbar glass">
+    <div class="tabbar" :data-n="tabs.length">
       <button
         v-for="tab in tabs"
         :key="tab.name"
@@ -52,12 +52,16 @@ function go(tab) {
 </template>
 
 <style scoped>
+/* 悬浮 dock：固定宽度居中、离底边 11px，内容从底部透出；
+   两侧留白由 wrap 的 pointer-events:none 点透到下层 */
 .tabbar-wrap {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 0 15px calc(9px + var(--safe-bottom));
+  display: flex;
+  justify-content: center;
+  padding: 0 16px calc(11px + var(--safe-bottom));
   z-index: 60;
   pointer-events: none;
 }
@@ -65,36 +69,62 @@ function go(tab) {
 .tabbar {
   display: flex;
   align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  max-width: 342px;
   height: var(--tabbar-h);
   border-radius: var(--r-pill);
-  padding: 6px;
-  box-shadow: var(--highlight), 0 14px 34px -16px rgba(16, 24, 40, 0.34);
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.74);
+  -webkit-backdrop-filter: blur(38px) saturate(200%);
+  backdrop-filter: blur(38px) saturate(200%);
+  box-shadow: var(--highlight), 0 12px 30px -14px rgba(16, 24, 40, 0.3);
   pointer-events: auto;
 }
 
 .tab {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--r-pill);
   color: var(--ink-3);
-  transition: color 0.24s var(--ease-out), background 0.28s var(--ease-out);
+  transition: color 0.24s var(--ease-out);
 }
 
-.tab.on {
-  color: var(--accent);
-  background: linear-gradient(168deg, rgba(255, 255, 255, 0.95), rgba(233, 241, 254, 0.92));
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.95);
-}
-
+/* 高亮落在 .tab-inner 上：小胶囊包住图标+文字，四周留出呼吸空间 */
 .tab-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 3px 0;
+  min-width: 64px;
+  padding: 4px 13px;
+  border-radius: var(--r-pill);
+  transition: background 0.28s var(--ease-out), box-shadow 0.28s var(--ease-out);
+}
+
+.tab.on {
+  color: var(--accent);
+}
+
+/* tab 少时格子宽，高亮也跟着放宽，避免变成竖向椭圆 */
+.tabbar[data-n='2'] .tab-inner {
+  min-width: 88px;
+}
+
+.tabbar[data-n='3'] .tab-inner {
+  min-width: 74px;
+}
+
+.tab.on .tab-inner {
+  background: linear-gradient(180deg, rgba(44, 123, 242, 0.14), rgba(44, 123, 242, 0.09));
+  box-shadow: inset 0 0 0 0.5px rgba(44, 123, 242, 0.16);
+}
+
+.tab:active .icon-wrap {
+  transform: scale(0.9);
 }
 
 .icon-wrap {
@@ -103,6 +133,11 @@ function go(tab) {
   align-items: center;
   justify-content: center;
   height: 23px;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.tab.on .icon-wrap {
+  transform: translateY(-0.5px) scale(1.04);
 }
 
 .tab-label {
