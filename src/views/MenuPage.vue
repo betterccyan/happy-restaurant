@@ -680,4 +680,52 @@ async function lucky() {
   opacity: 0;
   transform: translate3d(0, 16px, 0);
 }
+
+/* ---- 平板：顶栏与购物车栏跟正文同一列，横屏菜品改双列 ---- */
+@media (min-width: 700px) {
+  .tb-row,
+  .search-row,
+  .cats,
+  .sub-row {
+    width: 100%;
+    max-width: var(--content-w);
+    margin-inline: auto;
+  }
+  .tb-row {
+    padding-inline: 26px;
+  }
+  .search-row {
+    padding-inline: 26px;
+  }
+  .cats {
+    padding-inline: 26px;
+  }
+  .sub-row {
+    padding-inline: 26px;
+  }
+  /* 购物车栏底部是整宽的渐变遮罩，收窄的时候两侧要留出同样的边 */
+  .cartbar-wrap {
+    padding-inline: 26px;
+  }
+  .cartbar {
+    max-width: var(--content-w);
+    margin-inline: auto;
+  }
+  .list-scroll {
+    padding-bottom: calc(var(--tabbar-h) + 118px + var(--safe-bottom));
+  }
+}
+
+@media (min-width: 1000px) {
+  /* 横屏一行放两道菜，卡片的横排结构正好撑得住 */
+  .dishes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 11px;
+  }
+  .dish {
+    padding: 12px 13px;
+    gap: 12px;
+  }
+}
 </style>

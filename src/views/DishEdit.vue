@@ -1088,4 +1088,18 @@ async function confirmDelete() {
 .scroll {
   padding-bottom: 0;
 }
+
+/* ---- 平板：表单列收窄，编辑列窄一些眼睛不用左右扫 ---- */
+@media (min-width: 700px) {
+  .page {
+    --content-w: 780px;
+  }
+  .dock {
+    max-width: var(--content-w);
+    margin-inline: auto;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-inline: 1px solid var(--hairline);
+    box-shadow: 0 -10px 30px -22px rgba(16, 24, 40, 0.3);
+  }
+}
 </style>

@@ -419,4 +419,12 @@ onMounted(refreshSnaps)
   text-align: left;
   background: none;
 }
+
+/* 表单类页面在平板上不需要铺满 1000，收窄一点更好读；
+   覆写变量而不是直接改 page-pad，标题栏才会跟着对齐 */
+@media (min-width: 700px) {
+  .page {
+    --content-w: 780px;
+  }
+}
 </style>

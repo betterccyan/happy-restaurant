@@ -413,4 +413,22 @@ onMounted(() => {
   display: flex;
   gap: 7px;
 }
+
+/* ---- 平板：头部跟正文同一列，横屏单据两列 ---- */
+@media (min-width: 700px) {
+  .head {
+    width: 100%;
+    max-width: var(--content-w);
+    margin-inline: auto;
+    padding-inline: 26px;
+  }
+}
+
+@media (min-width: 1000px) {
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
 </style>

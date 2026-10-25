@@ -222,4 +222,66 @@ function enter(role) {
 .anim-rise-late {
   animation: rise 0.46s var(--ease-spring) 0.07s both;
 }
+
+/* ---- 平板：内容列居中，横屏时两个身份并排 ---- */
+@media (min-width: 700px) {
+  .wrap {
+    /* width:100% 不能省：设了 margin-inline:auto 之后，flex 子项不再被拉伸，
+       会退化成「内容有多宽就多宽」，卡片宽度跟着文字长度乱跳 */
+    width: 100%;
+    max-width: var(--content-w);
+    margin-inline: auto;
+    /* 内容不满一屏时垂直居中；溢出时 auto 边距按 0 处理，不会把顶部裁掉 */
+    margin-block: auto;
+    padding-inline: 26px;
+  }
+}
+
+@media (min-width: 1000px) {
+  .wrap {
+    max-width: 880px;
+  }
+  .hero {
+    padding: 40px 26px 32px;
+  }
+  .hero-name {
+    font-size: 30px;
+  }
+  .prompt {
+    margin: 34px 4px 14px;
+  }
+  /* 横屏宽度够，两个身份并排，视线一眼扫完 */
+  .roles {
+    flex-direction: row;
+    gap: 13px;
+  }
+  .role {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 20px 18px;
+  }
+}
+
+/* 矮屏（横屏平板 / 分屏）：hero 收紧，别把身份选择挤出首屏 */
+@media (max-height: 560px) {
+  .hero {
+    padding: 24px 22px 20px;
+  }
+  .hero-bowl {
+    font-size: 40px;
+  }
+  .hero-name {
+    margin-top: 10px;
+    font-size: 23px;
+  }
+  .hero-meta {
+    margin-top: 11px;
+  }
+  .prompt {
+    margin: 18px 4px 10px;
+  }
+  .foot {
+    margin-top: 18px;
+  }
+}
 </style>

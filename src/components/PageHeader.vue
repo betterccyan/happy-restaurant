@@ -100,4 +100,15 @@ function onBack() {
   gap: 8px;
   flex: 0 0 auto;
 }
+
+/* 宽屏：标题栏内容跟正文对齐，不会出现标题在左、正文居中的错位 */
+@media (min-width: 700px) {
+  .ph-row {
+    width: 100%;
+    max-width: var(--content-w);
+    margin-inline: auto;
+    min-height: 56px;
+    padding: 6px 16px 6px 12px;
+  }
+}
 </style>

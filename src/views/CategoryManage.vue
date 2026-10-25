@@ -437,4 +437,13 @@ async function removeSub(c) {
   line-height: 1.5;
   text-align: center;
 }
+
+/* 平板横屏：一餐一卡，两列平铺，一眼看全所有餐次 */
+@media (min-width: 1000px) {
+  .cat-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
 </style>

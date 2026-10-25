@@ -590,3 +590,60 @@ img {
     background-position: -220% 0;
   }
 }
+
+/* ============================================================
+   宽屏适配：平板 / 折叠屏展开
+   ------------------------------------------------------------
+   手机竖屏的样式一行没动，全部走 min-width 媒体查询。
+   三档：
+     < 700px   手机（含手机横屏）—— 维持原样
+     ≥ 700px   平板竖屏 / 小屏平板 —— 内容列居中限宽 680
+     ≥ 1000px  平板横屏 / 大屏 —— 列宽放到 1000，列表改双列
+   判断依据是可用宽度，不是设备类型，转屏时自然复用。
+   ============================================================ */
+@media (min-width: 700px) {
+  :root {
+    --content-w: 680px;
+  }
+
+  /* 页面内容居中限宽：背景渐变仍铺满整屏，只有内容收成一列 */
+  .page-pad {
+    width: 100%;
+    max-width: var(--content-w);
+    margin-inline: auto;
+    padding-inline: 26px;
+  }
+
+  /* 左右到边的列表块跟着内容列走（这些元素不总是 .page-pad 的子级） */
+  .page-pad .list {
+    max-width: 100%;
+  }
+
+  .empty {
+    padding: 58px 26px;
+  }
+
+  /* 底部弹层改成居中的浮层：宽屏上横贯整屏的 sheet 会显得很空 */
+  .sheet {
+    max-width: 560px;
+    margin-inline: auto;
+    bottom: 22px;
+    border-radius: var(--r-xl);
+  }
+
+  /* toast 同理，78% 宽在横屏上会拉成一长条 */
+  .toast {
+    max-width: 420px;
+  }
+}
+
+@media (min-width: 1000px) {
+  :root {
+    --content-w: min(1000px, calc(100% - 64px));
+  }
+
+  .page-pad {
+    padding-inline: 28px;
+  }
+}
+

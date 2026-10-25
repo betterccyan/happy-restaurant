@@ -299,4 +299,37 @@ function edit(dish) {
 .has-tabbar {
   padding-bottom: calc(var(--tabbar-h) + 100px + var(--safe-bottom));
 }
+
+/* ---- 平板：筛选条跟正文对齐，横屏把清单拆成两列卡片 ---- */
+@media (min-width: 700px) {
+  .bar,
+  .cats {
+    width: 100%;
+    max-width: var(--content-w);
+    margin-inline: auto;
+    padding-inline: 26px;
+  }
+}
+
+@media (min-width: 1000px) {
+  /* .list 原本是「一张大卡片 + 行分隔线」，宽屏上把每行独立成卡片，
+     两列平铺，长清单不用一路往下翻 */
+  .list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+    border-radius: 0;
+  }
+  .list .row {
+    background: var(--card-bg);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-card), var(--highlight);
+  }
+  .list .row + .row::before {
+    display: none;
+  }
+}
 </style>

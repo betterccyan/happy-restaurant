@@ -327,4 +327,24 @@ async function copyText() {
   line-height: 1.5;
   text-align: center;
 }
+/* 平板横屏：食材一行一项太浪费宽度，拆成两列清单 */
+@media (min-width: 1000px) {
+  .list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+    border-radius: 0;
+  }
+  .list .srow {
+    background: var(--card-bg);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-card), var(--highlight);
+  }
+  .list .srow + .srow::before {
+    display: none;
+  }
+}
 </style>

@@ -417,4 +417,36 @@ function switchRole() {
 .anim-rise-late {
   animation: rise 0.46s var(--ease-spring) 0.08s both;
 }
+
+/* ---- 平板：头部与正文同一列，横屏时卡片改双列 ---- */
+@media (min-width: 700px) {
+  .head {
+    width: 100%;
+    max-width: var(--content-w);
+    margin-inline: auto;
+    padding-inline: 26px;
+  }
+  .stat {
+    padding: 18px 12px 15px;
+  }
+  .stat-val {
+    font-size: 28px;
+  }
+}
+
+@media (min-width: 1000px) {
+  /* 待做的单横屏两列并排，宽屏下不再一条道拉到底 */
+  .orders {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  /* 四个管理入口一行放下 */
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .entry {
+    padding: 17px 16px 16px;
+  }
+}
 </style>

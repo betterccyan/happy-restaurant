@@ -334,4 +334,18 @@ function submit() {
   flex: 0 0 auto;
   min-width: 148px;
 }
+
+/* ---- 平板：表单列收窄，标题栏 / 正文 / 结算栏都跟着 --content-w 走 ---- */
+@media (min-width: 700px) {
+  .page {
+    --content-w: 780px;
+  }
+  .dock {
+    max-width: var(--content-w);
+    margin-inline: auto;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-inline: 1px solid var(--hairline);
+    box-shadow: 0 -10px 30px -22px rgba(16, 24, 40, 0.3);
+  }
+}
 </style>
