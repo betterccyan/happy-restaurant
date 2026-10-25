@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "调试界面（Chrome / 移动端模拟）",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:5173",
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMaps": true,
+      "preLaunchTask": "① 开发预览（浏览器热更新）"
+    },
+    {
+      "name": "调试安卓 WebView",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
+      "address": "localhost",
+      "webRoot": "${workspaceFolder}/src"
+    }
+  ]
+}

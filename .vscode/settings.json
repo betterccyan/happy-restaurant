@@ -1,0 +1,51 @@
+{
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "android/.gradle": true,
+    "android/build": true,
+    "android/app/build": true,
+    "shots": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/package-lock.json": true,
+    "android/**/build": true,
+    "android/app/src/main/assets/public": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/android/.gradle/**": true,
+    "**/android/app/build/**": true
+  },
+
+  "emmet.includeLanguages": { "vue": "html" },
+  "vue.server.hybridMode": true,
+  "typescript.validate.enable": false,
+  "javascript.validate.enable": true,
+
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-21",
+      "path": "D:\\android-build\\jdk-21.0.12.1+1",
+      "default": true
+    }
+  ],
+  "java.jdt.ls.java.home": "D:\\android-build\\jdk-21.0.12.1+1",
+  "gradle.nestedProjects": true,
+
+  "terminal.integrated.env.windows": {
+    "JAVA_HOME": "D:\\android-build\\jdk-21.0.12.1+1",
+    "ANDROID_HOME": "D:\\android-build\\sdk",
+    "ANDROID_SDK_ROOT": "D:\\android-build\\sdk"
+  },
+  "terminal.integrated.cwd": "${workspaceFolder}"
+}

@@ -1,0 +1,64 @@
+/* ============================================================
+   幸福小馆 · 设计系统
+   语言参考：小米澎湃OS 4「柔光玻璃」(Liquid Glass)
+   原则：低饱和冷调中性色 + 单一强调色 + 通透材质 + 大圆角 + 极轻阴影
+   ============================================================ */
+
+:root {
+  /* ---- 强调色（澎湃蓝） ---- */
+  --accent: #2c7bf2;
+  --accent-deep: #1a5fd0;
+  --accent-soft: #e9f1fe;
+  --accent-glow: rgba(44, 123, 242, 0.28);
+
+  /* ---- 中性文字 ---- */
+  --ink-1: #12161b;
+  --ink-2: #4a5460;
+  --ink-3: #8a929e;
+  --ink-4: #b9c0ca;
+
+  /* ---- 背景 ---- */
+  --bg: #eff2f7;
+  --bg-deep: #e6eaf2;
+
+  /* ---- 材质 ---- */
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --card-bg: rgba(255, 255, 255, 0.88);
+  --card-bg-solid: #ffffff;
+  --hairline: rgba(18, 22, 27, 0.07);
+  --hairline-strong: rgba(18, 22, 27, 0.12);
+
+  /* ---- 语义色 ---- */
+  --ok: #0fa968;
+  --ok-soft: #e4f7ee;
+  --warn: #e88c1f;
+  --warn-soft: #fdf1e1;
+  --danger: #e5484d;
+  --danger-soft: #fdecec;
+  --info: #2c7bf2;
+  --info-soft: #e9f1fe;
+
+  /* ---- 圆角 ---- */
+  --r-xl: 26px;
+  --r-lg: 20px;
+  --r-md: 15px;
+  --r-sm: 11px;
+  --r-pill: 999px;
+
+  /* ---- 阴影（单层，澎湃OS 用高光描边替代重投影） ---- */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 26px -18px rgba(16, 24, 40, 0.22);
+  --shadow-float: 0 2px 8px rgba(16, 24, 40, 0.06), 0 18px 40px -20px rgba(16, 24, 40, 0.28);
+  --highlight: inset 0 0 0 1px rgba(255, 255, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+  /* ---- 动效 ---- */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* ---- 安全区 ---- */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* ---- tab bar ---- */
+  --tabbar-h: 62px;
+}

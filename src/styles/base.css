@@ -1,0 +1,592 @@
+/* ============================================================
+   基础层：reset / 排版 / 通用组件
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'HarmonyOS Sans SC', 'PingFang SC',
+    'MiSans', 'Segoe UI', 'Noto Sans SC', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-1);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+#app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  /* 澎湃OS 柔光背景：冷调基底 + 三处柔光斑 */
+  background:
+    radial-gradient(58% 42% at 8% -6%, rgba(120, 172, 255, 0.34) 0%, rgba(120, 172, 255, 0) 62%),
+    radial-gradient(52% 40% at 100% 4%, rgba(160, 200, 255, 0.26) 0%, rgba(160, 200, 255, 0) 60%),
+    radial-gradient(70% 46% at 50% 108%, rgba(186, 214, 255, 0.32) 0%, rgba(186, 214, 255, 0) 68%),
+    linear-gradient(180deg, #f2f5fa 0%, var(--bg) 42%, var(--bg-deep) 100%);
+}
+
+input,
+textarea,
+button,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- 滚动容器 ---------- */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.page-pad {
+  padding: 4px 18px 28px;
+}
+
+/* tab bar 页面底部留白 */
+.has-tabbar {
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 30px);
+}
+
+/* 固定底栏页面 */
+.has-dock {
+  padding-bottom: calc(96px + var(--safe-bottom));
+}
+
+/* ---------- 排版 ---------- */
+.h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  line-height: 1.24;
+}
+.h2 {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+}
+.h3 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+.sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+.tiny {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.mono-num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+
+.sec-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 24px 2px 11px;
+}
+.sec-title .h2 {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- 玻璃材质 ---------- */
+/* 仅用于固定浮层（顶栏 / tab bar / 弹窗），全项目 ≤ 3 处 */
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  backdrop-filter: blur(26px) saturate(180%);
+  box-shadow: var(--highlight);
+}
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card), var(--highlight);
+  padding: 16px;
+}
+
+.card-flat {
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: var(--r-md);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85);
+  padding: 13px 14px;
+}
+
+.press {
+  transition: transform 0.22s var(--ease-spring), opacity 0.2s ease;
+}
+.press:active {
+  transform: scale(0.972);
+  opacity: 0.92;
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 50px;
+  padding: 0 22px;
+  border-radius: var(--r-md);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  transition: transform 0.22s var(--ease-spring), opacity 0.2s ease, background 0.2s ease;
+  white-space: nowrap;
+}
+.btn:active {
+  transform: scale(0.972);
+}
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(168deg, #4d8df7 0%, var(--accent) 46%, var(--accent-deep) 100%);
+  box-shadow: 0 6px 18px -8px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.btn-ghost {
+  color: var(--ink-1);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(18, 22, 27, 0.07);
+}
+.btn-soft {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.btn-danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.btn-block {
+  width: 100%;
+}
+.btn-sm {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+  border-radius: var(--r-sm);
+}
+.btn[disabled] {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+/* ---------- 胶囊筛选 ---------- */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+.chips::-webkit-scrollbar {
+  display: none;
+}
+.chip {
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 15px;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+  transition: transform 0.22s var(--ease-spring), background 0.2s ease, color 0.2s ease,
+    box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+.chip:active {
+  transform: scale(0.95);
+}
+.chip.on {
+  color: #fff;
+  background: linear-gradient(168deg, #4d8df7, var(--accent));
+  box-shadow: 0 6px 16px -10px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ---------- 表单 ---------- */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--r-md);
+  box-shadow: inset 0 0 0 1px rgba(18, 22, 27, 0.055);
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+.field:focus-within {
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 4px rgba(44, 123, 242, 0.09);
+}
+.field-label {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink-2);
+  min-width: 62px;
+}
+.field input,
+.field textarea {
+  flex: 1;
+  min-width: 0;
+  font-size: 15.5px;
+  font-weight: 500;
+  color: var(--ink-1);
+}
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--ink-4);
+  font-weight: 400;
+}
+.field textarea {
+  resize: none;
+  line-height: 1.55;
+  min-height: 62px;
+}
+.field-col {
+  display: block;
+  padding: 13px 15px;
+}
+.field-col .field-label {
+  display: block;
+  margin-bottom: 7px;
+  min-width: 0;
+}
+
+/* ---------- 列表 ---------- */
+.list {
+  background: var(--card-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card), var(--highlight);
+  overflow: hidden;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  position: relative;
+  transition: background 0.18s ease;
+}
+.row + .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: var(--hairline);
+}
+.row:active {
+  background: rgba(18, 22, 27, 0.035);
+}
+.row-main {
+  flex: 1;
+  min-width: 0;
+}
+.row-title {
+  font-size: 15.5px;
+  font-weight: 550;
+  letter-spacing: -0.1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-desc {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-arrow {
+  flex: 0 0 auto;
+  color: var(--ink-4);
+}
+
+/* ---------- 角标 / 状态胶囊 ---------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.pill-warn {
+  color: #a9630d;
+  background: var(--warn-soft);
+}
+.pill-info {
+  color: #1a5fd0;
+  background: var(--info-soft);
+}
+.pill-doing {
+  color: #b0560d;
+  background: #fdeee0;
+}
+.pill-ok {
+  color: #0a7a4b;
+  background: var(--ok-soft);
+}
+.pill-off {
+  color: var(--ink-3);
+  background: rgba(18, 22, 27, 0.055);
+}
+.pill-danger {
+  color: #b93034;
+  background: var(--danger-soft);
+}
+
+/* ---------- 食材 / 标签 ---------- */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--ink-2);
+  background: rgba(18, 22, 27, 0.045);
+}
+
+/* ---------- 分隔 ---------- */
+.divider {
+  height: 1px;
+  background: var(--hairline);
+  margin: 14px 0;
+}
+
+/* ---------- 空态 ---------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 54px 26px;
+  text-align: center;
+}
+.empty-icon {
+  font-size: 40px;
+  line-height: 1;
+  filter: saturate(0.9);
+}
+.empty-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.empty-hint {
+  font-size: 13px;
+  color: var(--ink-3);
+  max-width: 240px;
+  line-height: 1.5;
+}
+
+/* ---------- 动画 ---------- */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.anim-rise {
+  animation: rise 0.44s var(--ease-spring) both;
+}
+.anim-fade {
+  animation: fade 0.3s ease both;
+}
+.anim-pop {
+  animation: pop 0.36s var(--ease-spring) both;
+}
+
+/* ---------- toast ---------- */
+/* 放在画面偏上，避开底部导航、悬浮购物车与弹窗按钮 */
+.toast-layer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 24%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 200;
+  padding: 0 24px;
+}
+.toast {
+  max-width: 78%;
+  padding: 11px 18px;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 550;
+  color: #fff;
+  background: rgba(24, 28, 34, 0.92);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.45);
+  animation: pop 0.3s var(--ease-spring) both;
+}
+
+/* ---------- 遮罩 / 弹窗 ---------- */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 20, 26, 0.34);
+  z-index: 100;
+  animation: fade 0.26s ease both;
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 101;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: #fbfcfe;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: 0 -14px 44px -18px rgba(16, 24, 40, 0.34);
+  padding-bottom: var(--safe-bottom);
+  animation: sheet-up 0.4s var(--ease-spring) both;
+  overflow: hidden;
+}
+.sheet-grabber {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(18, 22, 27, 0.16);
+  margin: 9px auto 3px;
+  flex: 0 0 auto;
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 20px 12px;
+  flex: 0 0 auto;
+}
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 20px;
+  scrollbar-width: none;
+}
+.sheet-body::-webkit-scrollbar {
+  display: none;
+}
+.sheet-foot {
+  flex: 0 0 auto;
+  padding: 14px 20px calc(14px + var(--safe-bottom));
+  border-top: 1px solid var(--hairline);
+  background: rgba(251, 252, 254, 0.96);
+}
+
+/* ---------- 骨架屏 ---------- */
+.skeleton {
+  border-radius: var(--r-md);
+  background: linear-gradient(100deg, rgba(18, 22, 27, 0.05) 20%, rgba(18, 22, 27, 0.085) 40%, rgba(18, 22, 27, 0.05) 60%);
+  background-size: 220% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}

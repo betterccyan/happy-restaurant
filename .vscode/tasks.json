@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}",
+    "env": {
+      "JAVA_HOME": "D:\\android-build\\jdk-21.0.12.1+1",
+      "ANDROID_HOME": "D:\\android-build\\sdk",
+      "ANDROID_SDK_ROOT": "D:\\android-build\\sdk"
+    }
+  },
+  "tasks": [
+    {
+      "label": "① 开发预览（浏览器热更新）",
+      "type": "shell",
+      "command": "npm run dev -- --host 127.0.0.1",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "Local:"
+        }
+      },
+      "presentation": { "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "② 构建前端产物",
+      "type": "shell",
+      "command": "npm run build",
+      "problemMatcher": [],
+      "presentation": { "clear": true }
+    },
+    {
+      "label": "③ 同步到安卓工程",
+      "type": "shell",
+      "command": "npm run sync",
+      "problemMatcher": [],
+      "presentation": { "clear": true }
+    },
+    {
+      "label": "④ 打包 APK（debug 可直接安装）",
+      "type": "shell",
+      "command": "npm run apk",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "clear": true }
+    },
+    {
+      "label": "⑤ 安装到已连接的手机",
+      "type": "shell",
+      "command": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
+      "problemMatcher": [],
+      "presentation": { "clear": true }
+    },
+    {
+      "label": "⑥ 全流程截图（需先跑 ①）",
+      "type": "shell",
+      "command": "node tools/shots.mjs",
+      "problemMatcher": [],
+      "presentation": { "clear": true }
+    }
+  ]
+}

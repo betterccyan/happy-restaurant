@@ -1,0 +1,18 @@
+{
+  "appId": "com.xingfu.kitchen",
+  "appName": "幸福小馆",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#eff2f7",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "adjustMarginsForEdgeToEdge": "force"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#eff2f7",
+      "overlaysWebView": false
+    }
+  }
+}
