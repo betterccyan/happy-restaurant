@@ -6,6 +6,7 @@ import DishAvatar from '../components/DishAvatar.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { db, updateOrderStatus, deleteOrder } from '../data/db'
 import { haptic, toast } from '../store/app'
+import { ask } from '../store/dialog'
 import { statusInfo, formatTime, isToday, orderCalories, orderQty } from '../lib/util'
 import { navigate } from '../store/router'
 
@@ -50,8 +51,14 @@ function drop(order) {
   toast('已取消这一单')
 }
 
-function remove(order) {
-  if (!window.confirm('从记录里删掉这一单？')) return
+async function remove(order) {
+  const ok = await ask({
+    title: '从记录里删掉这一单？',
+    message: '这一单的菜品和份数都会一起消失。',
+    confirmText: '删除',
+    danger: true
+  })
+  if (!ok) return
   deleteOrder(order.id)
   toast('已删除')
 }

@@ -8,7 +8,8 @@ import { haptic, toast } from '../store/app'
 import { normalizeOptions } from '../lib/options'
 import { pickAndCompress, putImage, resolveImage, removeImage } from '../lib/image-store'
 import { mealCategoryByHour } from '../lib/util'
-import { inferDish } from '../data/dish-kb'
+import { inferDish, searchDish } from '../data/dish-kb'
+import { ask } from '../store/dialog'
 
 const props = defineProps({ params: { type: Object, default: () => ({}) } })
 
@@ -63,11 +64,19 @@ function dismissHint() {
   hint.value = null
 }
 
-function fillHint() {
+async function fillHint() {
   const h = hint.value
   if (!h) return
   const hasData = Number(calories.value) > 0 || String(ingredients.value || '').trim()
-  if (hasData && !window.confirm('会用识别结果覆盖现在的热量和食材，继续？')) return
+  if (hasData) {
+    const ok = await ask({
+      title: '用识别结果覆盖？',
+      message: '现在填的热量和食材会被「' + (h.name || '估算结果') + '」的替换掉。',
+      hint: h.calories + ' 千卡 · ' + h.ingredients.split('\n').filter(Boolean).length + ' 种食材',
+      confirmText: '覆盖'
+    })
+    if (!ok) return
+  }
   calories.value = h.calories
   ingredients.value = h.ingredients
   if (h.emoji) emoji.value = h.emoji
@@ -76,6 +85,80 @@ function fillHint() {
   hint.value = null
   haptic()
   toast('已填入热量和 ' + h.ingredients.split('\n').filter(Boolean).length + ' 种食材')
+}
+
+/* --------- 菜名联想：打几个字就列出菜谱库里的候选 --------- */
+const suggestOpen = ref(false)
+const suggestItems = ref([])
+const suggestIdx = ref(-1)
+let typing = false // 中文输入法拼写中，别急着弹候选
+
+function updateSuggest() {
+  const k = String(name.value || '').trim()
+  if (!k) {
+    suggestItems.value = []
+    suggestOpen.value = false
+    return
+  }
+  let items = searchDish(k, 6)
+  // 只有一个候选且和自己打的一字不差（编辑已有菜品时常见）就别弹，免得挡视线
+  if (items.length === 1 && items[0].name === k) items = []
+  suggestItems.value = items
+  suggestIdx.value = -1
+  suggestOpen.value = items.length > 0
+}
+
+function onNameInput() {
+  if (typing) return
+  updateSuggest()
+}
+
+function onCompositionStart() {
+  typing = true
+}
+
+function onCompositionEnd() {
+  typing = false
+  updateSuggest()
+}
+
+function onNameFocus() {
+  if (String(name.value || '').trim()) updateSuggest()
+}
+
+// 延迟收起：手机上 blur 先于 click 发生，立刻关会点不到候选
+function onNameBlur() {
+  setTimeout(() => {
+    suggestOpen.value = false
+  }, 170)
+}
+
+function moveSuggest(step) {
+  if (!suggestOpen.value) {
+    updateSuggest()
+    return
+  }
+  const n = suggestItems.value.length
+  if (!n) return
+  suggestIdx.value = (suggestIdx.value + step + n) % n
+}
+
+function pickSuggest(item) {
+  if (!item) return
+  name.value = item.name
+  suggestItems.value = []
+  suggestOpen.value = false
+  suggestIdx.value = -1
+  hintHandled.value = '' // 选完就让推断卡片正常出来
+  haptic()
+}
+
+function onNameEnter(e) {
+  if (typing) return // 输入法选字时按回车不算选中候选
+  if (suggestOpen.value && suggestIdx.value >= 0) {
+    e.preventDefault()
+    pickSuggest(suggestItems.value[suggestIdx.value])
+  }
 }
 
 onMounted(async () => {
@@ -207,9 +290,15 @@ function save() {
   }
 }
 
-function confirmDelete() {
+async function confirmDelete() {
   if (!isEdit) return
-  if (!window.confirm('删除「' + name.value + '」？')) return
+  const ok = await ask({
+    title: '删除「' + (name.value || '这道菜') + '」？',
+    message: '从菜单里消失，以前点过的记录还在。',
+    confirmText: '删除',
+    danger: true
+  })
+  if (!ok) return
   if (imageKey.value) removeImage(imageKey.value)
   deleteDish(editingId)
   toast('已删除')
@@ -265,13 +354,46 @@ function confirmDelete() {
         <!-- 基本信息 -->
         <div class="sec-title"><div class="h2">基本信息</div></div>
 
-        <div class="field">
-          <span class="field-label">菜名</span>
-          <input v-model="name" placeholder="比如 番茄炒蛋" maxlength="20" />
+        <div class="name-wrap">
+          <div class="field">
+            <span class="field-label">菜名</span>
+            <input
+              v-model="name"
+              placeholder="比如 番茄炒蛋"
+              maxlength="20"
+              autocomplete="off"
+              @input="onNameInput"
+              @focus="onNameFocus"
+              @blur="onNameBlur"
+              @compositionstart="onCompositionStart"
+              @compositionend="onCompositionEnd"
+              @keydown.down.prevent="moveSuggest(1)"
+              @keydown.up.prevent="moveSuggest(-1)"
+              @keydown.enter="onNameEnter"
+            />
+          </div>
+
+          <!-- 打几个字就列出菜谱库里的候选，选中即补全 -->
+          <Transition name="sug">
+            <div v-if="suggestOpen" class="sug">
+              <button
+                v-for="(s, i) in suggestItems"
+                :key="s.name"
+                class="sug-item"
+                :class="{ on: i === suggestIdx }"
+                @mousedown.prevent="pickSuggest(s)"
+              >
+                <span class="sug-emoji">{{ s.emoji }}</span>
+                <span class="sug-name">{{ s.name }}</span>
+                <span class="sug-kcal mono-num">{{ s.calories }} 千卡</span>
+              </button>
+              <div class="sug-foot">选中后自动带出热量与食材</div>
+            </div>
+          </Transition>
         </div>
 
         <!-- 根据菜名推断热量与食材 -->
-        <div v-if="hint" class="guess anim-fade">
+        <div v-if="hint && !suggestOpen" class="guess anim-fade">
           <div class="guess-top">
             <span class="guess-emoji">{{ hint.emoji }}</span>
             <div class="guess-text">
@@ -527,6 +649,75 @@ function confirmDelete() {
 
 .field.gap {
   margin-top: 9px;
+}
+
+/* ---- 菜名联想 ---- */
+/* 走文档流而不是绝对定位浮层：输入框下面永远能完整看到候选，
+   不会被下方字段压住，键盘弹起时也不会被裁掉半行 */
+.sug {
+  margin-top: 8px;
+  padding: 5px;
+  border-radius: var(--r-md);
+  background: #fdfefe;
+  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.05), 0 14px 30px -18px rgba(16, 24, 40, 0.2),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.065);
+}
+.sug-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 42px;
+  padding: 0 10px;
+  border-radius: 10px;
+  text-align: left;
+  transition: background 0.16s ease;
+}
+.sug-item.on {
+  background: var(--accent-soft);
+}
+.sug-emoji {
+  flex: 0 0 auto;
+  width: 22px;
+  text-align: center;
+  font-size: 17px;
+  line-height: 1;
+}
+.sug-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 550;
+  color: var(--ink-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sug-item.on .sug-name {
+  color: var(--accent-deep);
+  font-weight: 650;
+}
+.sug-kcal {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sug-foot {
+  margin-top: 3px;
+  padding: 7px 10px 5px;
+  border-top: 1px solid var(--hairline);
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
+.sug-enter-active,
+.sug-leave-active {
+  transition: opacity 0.18s ease, transform 0.22s var(--ease-out);
+}
+.sug-enter-from,
+.sug-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
 }
 
 /* ---- 菜名识别卡片 ---- */

@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import TabBar from './components/TabBar.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import { route, back } from './store/router'
 import { db, loadInfo, storageState, importJson, autoSnapshot } from './data/db'
 import { toastState, toast, ui } from './store/app'
+import { dialogState, settleDialog } from './store/dialog'
 import { latestSnapshot } from './data/snapshots'
 import { formatTime } from './lib/util'
 
@@ -100,15 +102,24 @@ onMounted(async () => {
   document.addEventListener('scroll', onScroll, { capture: true, passive: true })
 
   // 安卓物理返回键 → 应用内路由
+  // 弹窗开着时先关弹窗，否则用户按返回会直接在弹窗背后翻页
+  const handleBack = () => {
+    if (dialogState.show) {
+      settleDialog(false)
+      return true
+    }
+    return back()
+  }
+
   try {
     const { App: CapApp } = await import('@capacitor/app')
     CapApp.addListener('backButton', ({ canGoBack }) => {
-      if (back()) return
+      if (handleBack()) return
       CapApp.exitApp()
     })
   } catch {
     window.addEventListener('popstate', () => {
-      back()
+      handleBack()
     })
   }
 })
@@ -126,6 +137,8 @@ onBeforeUnmount(() => {
   </div>
 
   <TabBar v-if="showTab" />
+
+  <ConfirmDialog />
 
   <div v-if="toastState.show" class="toast-layer">
     <div class="toast">{{ toastState.text }}</div>

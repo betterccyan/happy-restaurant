@@ -5,6 +5,7 @@ import AppIcon from '../components/AppIcon.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { db, listCategories, createCategory, renameCategory, deleteCategory } from '../data/db'
 import { haptic, toast } from '../store/app'
+import { ask } from '../store/dialog'
 
 const newName = ref('')
 const editingId = ref('')
@@ -51,12 +52,18 @@ function saveEdit() {
   editingId.value = ''
 }
 
-function remove(c) {
+async function remove(c) {
   if (c.count > 0) {
     toast('「' + c.name + '」下还有 ' + c.count + ' 道菜')
     return
   }
-  if (!window.confirm('删除分类「' + c.name + '」？')) return
+  const ok = await ask({
+    title: '删除分类「' + c.name + '」？',
+    message: '这餐下的菜不会被删，但要重新归类。',
+    confirmText: '删除',
+    danger: true
+  })
+  if (!ok) return
   try {
     deleteCategory(c.id)
     toast('已删除')

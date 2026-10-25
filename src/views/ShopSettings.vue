@@ -6,6 +6,7 @@ import { db, saveSettings, exportJson, importJson, resetAll } from '../data/db'
 import { listSnapshots, getSnapshot, putSnapshot } from '../data/snapshots'
 import { resetTo } from '../store/router'
 import { haptic, toast } from '../store/app'
+import { ask } from '../store/dialog'
 import { formatTime } from '../lib/util'
 
 const name = ref(db.settings.name)
@@ -96,7 +97,14 @@ async function manualBackup() {
 
 async function restoreSnap(s) {
   if (snapBusy.value) return
-  if (!window.confirm('用 ' + formatSnapTime(s.at) + ' 的备份覆盖当前数据？')) return
+  const ok = await ask({
+    title: '回到 ' + formatSnapTime(s.at) + ' 的状态？',
+    message: '当前的菜品和点单会被这份备份替换。',
+    hint: '替换前会自动留一份备份。',
+    confirmText: '覆盖',
+    danger: true
+  })
+  if (!ok) return
   snapBusy.value = true
   try {
     const rec = await getSnapshot(s.id)
@@ -113,8 +121,15 @@ async function restoreSnap(s) {
   }
 }
 
-function reset() {
-  if (!window.confirm('恢复示例数据？现有的菜品和点菜单会被清空。')) return
+async function reset() {
+  const ok = await ask({
+    title: '恢复成示例数据？',
+    message: '现有菜品、点单和家庭信息全部清空。',
+    hint: '重置前同样会先留一份备份。',
+    confirmText: '清空并重置',
+    danger: true
+  })
+  if (!ok) return
   resetAll()
   haptic()
   resetTo('role-select')
