@@ -28,6 +28,9 @@
   },
 
   "emmet.includeLanguages": { "vue": "html" },
+  "git.path": "C:\\Program Files\\Git\\cmd\\git.exe",
+  "git.autofetch": false,
+  "git.confirmSync": false,
   "vue.server.hybridMode": true,
   "typescript.validate.enable": false,
   "javascript.validate.enable": true,
