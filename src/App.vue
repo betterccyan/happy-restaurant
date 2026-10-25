@@ -71,10 +71,19 @@ onMounted(async () => {
   padding-top: var(--safe-top);
 }
 
+/* 页面承载容器：必须撑满 #app 的剩余高度并允许收缩，
+   否则 flex 子项按内容高度撑开，超出部分被 #app 的 overflow:hidden 裁掉 → 页面无法滚动 */
+.safe-top {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .page-root {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
