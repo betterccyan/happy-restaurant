@@ -12,6 +12,7 @@
   <img alt="capacitor" src="https://img.shields.io/badge/Capacitor-7-119EFF?style=flat-square">
   <img alt="version" src="https://img.shields.io/badge/version-1.0.3-2C7BF2?style=flat-square">
   <img alt="size" src="https://img.shields.io/badge/APK-4.4MB-8A929E?style=flat-square">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-2C7BF2?style=flat-square">
 </p>
 
 ---
@@ -181,4 +182,8 @@ App 图标是**白瓷碗 + 暖橙汤面 + 一双斜搭在碗沿的筷子**。筷
 
 ## 协议
 
-本仓库为家庭自用项目，未声明开源协议。
+[MIT](LICENSE) © 2026 chaochao_yan
+
+随便用、随便改、随便拿去改成你家的菜单，商用也行，保留版权声明即可。项目按「现状」提供，不附带任何担保。
+
+> 本项目是给自家厨房写的，代码结构和命名都围绕「一家人的餐桌」展开。没有多租户、没有权限体系、没有并发处理——如果你要拿去做门店点单，数据库那层得重写（入口在 `src/data/db.js`）。
