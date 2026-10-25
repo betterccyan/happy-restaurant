@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader.vue'
 import AppIcon from '../components/AppIcon.vue'
 import DishAvatar from '../components/DishAvatar.vue'
 import Stepper from '../components/Stepper.vue'
+import TimeSheet from '../components/TimeSheet.vue'
 import { db, createOrder } from '../data/db'
 import { cart, setCartQty, removeFromCart, clearCart, haptic, toast, cartCount, cartCalories } from '../store/app'
 import { back, resetTo } from '../store/router'
@@ -11,6 +12,7 @@ import { back, resetTo } from '../store/router'
 const memberName = ref(db.lastMemberName || db.profile.nickname || '')
 const remark = ref('')
 const expectTime = ref('')
+const showTime = ref(false)
 const submitting = ref(false)
 
 const count = computed(() => cartCount())
@@ -24,8 +26,16 @@ onMounted(() => {
 
 const canSubmit = computed(() => cart.items.length > 0 && memberName.value.trim().length > 0)
 
-function pickTime(e) {
-  expectTime.value = e.target.value
+function onPickTime(v) {
+  expectTime.value = v
+  showTime.value = false
+  haptic()
+}
+
+function onClearTime() {
+  expectTime.value = ''
+  showTime.value = false
+  toast('改成尽快开饭')
 }
 
 function submit() {
@@ -108,15 +118,11 @@ function submit() {
               <div class="time-sub">{{ expectTime ? '主厨会看着时间做' : '不选表示尽快开饭' }}</div>
             </div>
             <div class="time-act">
-              <div class="time-wrap">
-                <input
-                  class="time-input"
-                  type="time"
-                  :value="expectTime"
-                  @input="pickTime"
-                />
-                <AppIcon name="clock" :size="14" :stroke="2" class="time-ico" />
-              </div>
+              <button class="time-btn" :class="{ set: !!expectTime }" @click="showTime = true">
+                <span v-if="expectTime" class="time-val mono-num">{{ expectTime }}</span>
+                <span v-else class="time-placeholder">选择</span>
+                <AppIcon :name="expectTime ? 'edit' : 'chevronRight'" :size="13" :stroke="2.3" />
+              </button>
               <button v-if="expectTime" class="time-clear" @click="expectTime = ''">
                 <AppIcon name="close" :size="13" :stroke="2.4" />
               </button>
@@ -147,6 +153,14 @@ function submit() {
       </div>
       <button class="btn btn-primary" :disabled="!canSubmit" @click="submit">提交点菜</button>
     </div>
+
+    <TimeSheet
+      v-if="showTime"
+      :value="expectTime"
+      @close="showTime = false"
+      @pick="onPickTime"
+      @clear="onClearTime"
+    />
   </div>
 </template>
 
@@ -235,40 +249,34 @@ function submit() {
   gap: 7px;
   flex: 0 0 auto;
 }
-.time-wrap {
-  position: relative;
-  display: flex;
+/* 时间按钮：未选时是描边胶囊，选了之后变成实心的品牌色块 */
+.time-btn {
+  display: inline-flex;
   align-items: center;
-}
-.time-input {
-  width: 112px;
+  gap: 6px;
   height: 38px;
-  padding: 0 30px 0 12px;
-  border-radius: var(--r-sm);
+  padding: 0 13px;
+  border-radius: var(--r-pill);
   font-size: 15px;
   font-weight: 650;
-  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  background: rgba(18, 22, 27, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(18, 22, 27, 0.06);
+  transition: transform 0.2s var(--ease-spring), background 0.2s ease, color 0.2s ease;
+}
+.time-btn:active {
+  transform: scale(0.96);
+}
+.time-btn.set {
   color: var(--accent-deep);
   background: var(--accent-soft);
-  border: none;
-  -webkit-appearance: none;
-  appearance: none;
+  box-shadow: inset 0 0 0 1.2px rgba(44, 123, 242, 0.26);
 }
-/* 隐藏原生时钟图标，但让它铺满整个控件以便点击 */
-.time-input::-webkit-calendar-picker-indicator {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
+.time-val {
+  letter-spacing: 0.2px;
 }
-.time-ico {
-  position: absolute;
-  right: 10px;
-  color: var(--accent);
-  pointer-events: none;
+.time-placeholder {
+  font-weight: 600;
 }
 .time-clear {
   display: flex;
@@ -279,6 +287,10 @@ function submit() {
   border-radius: 50%;
   color: var(--ink-3);
   background: rgba(18, 22, 27, 0.06);
+  transition: transform 0.18s var(--ease-spring);
+}
+.time-clear:active {
+  transform: scale(0.9);
 }
 
 .counter {
