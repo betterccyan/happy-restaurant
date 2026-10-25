@@ -31,7 +31,7 @@ function go(tab) {
 
 <template>
   <nav class="tabbar-wrap">
-    <div class="tabbar" :data-n="tabs.length">
+    <div class="tabbar">
       <button
         v-for="tab in tabs"
         :key="tab.name"
@@ -75,10 +75,14 @@ function go(tab) {
   height: var(--tabbar-h);
   border-radius: var(--r-pill);
   padding: 5px;
-  background: rgba(255, 255, 255, 0.74);
-  -webkit-backdrop-filter: blur(38px) saturate(200%);
-  backdrop-filter: blur(38px) saturate(200%);
-  box-shadow: var(--highlight), 0 12px 30px -14px rgba(16, 24, 40, 0.3);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 250, 254, 0.76));
+  -webkit-backdrop-filter: blur(46px) saturate(175%) brightness(1.03);
+  backdrop-filter: blur(46px) saturate(175%) brightness(1.03);
+  /* 冷白玻璃：顶部一道高光 + 外圈极淡暗线定形 + 底部内阴影做出厚度 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -10px 14px -14px rgba(16, 24, 40, 0.1), 0 0 0 0.5px rgba(17, 24, 39, 0.06),
+    0 2px 6px -2px rgba(16, 24, 40, 0.05), 0 18px 40px -20px rgba(16, 24, 40, 0.32);
   pointer-events: auto;
 }
 
@@ -88,39 +92,20 @@ function go(tab) {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--r-pill);
   color: var(--ink-3);
-  transition: color 0.24s var(--ease-out);
+  transition: color 0.26s var(--ease-out);
 }
 
-/* 高亮落在 .tab-inner 上：小胶囊包住图标+文字，四周留出呼吸空间 */
 .tab-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 64px;
-  padding: 4px 13px;
-  border-radius: var(--r-pill);
-  transition: background 0.28s var(--ease-out), box-shadow 0.28s var(--ease-out);
+  padding: 2px 0;
 }
 
 .tab.on {
   color: var(--accent);
-}
-
-/* tab 少时格子宽，高亮也跟着放宽，避免变成竖向椭圆 */
-.tabbar[data-n='2'] .tab-inner {
-  min-width: 88px;
-}
-
-.tabbar[data-n='3'] .tab-inner {
-  min-width: 74px;
-}
-
-.tab.on .tab-inner {
-  background: linear-gradient(180deg, rgba(44, 123, 242, 0.14), rgba(44, 123, 242, 0.09));
-  box-shadow: inset 0 0 0 0.5px rgba(44, 123, 242, 0.16);
 }
 
 .tab:active .icon-wrap {
@@ -133,22 +118,23 @@ function go(tab) {
   align-items: center;
   justify-content: center;
   height: 23px;
-  transition: transform 0.3s var(--ease-out);
+  transition: transform 0.32s var(--ease-out);
 }
 
 .tab.on .icon-wrap {
-  transform: translateY(-0.5px) scale(1.04);
+  transform: translateY(-0.5px) scale(1.06);
 }
 
 .tab-label {
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.1px;
   line-height: 1;
+  transition: font-weight 0.2s var(--ease-out);
 }
 
 .tab.on .tab-label {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .badge {
